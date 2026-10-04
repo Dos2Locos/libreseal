@@ -12,19 +12,15 @@ import { FaArrowRight, FaEnvelope, FaLock, FaPlus, FaSignOutAlt, FaUsers } from 
 
 import { RoleLabel } from '@/components/users/RoleLabel'
 import OnboardingNavbar from '@/components/layout/OnboardingNavbar'
-import { GetLicenseData } from '@/graphql/queries/organisation/getLicense.gql'
 import { GetPendingInvitesForUser } from '@/graphql/queries/organisation/getPendingInvitesForUser.gql'
 import { useQuery } from '@apollo/client'
 import { Alert } from '@/components/common/Alert'
 import { Card } from '@/components/common/Card'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
 import { FaCubes } from 'react-icons/fa6'
 import { handleSignout } from '@/apollo/client'
 
 export default function Home() {
   const router = useRouter()
-
-  useQuery(GetLicenseData)
 
   const { organisations, setActiveOrganisation, loading } = useContext(organisationContext)
   const { user } = useUser()
@@ -165,7 +161,6 @@ export default function Home() {
                             <RoleLabel role={org.role!} />
                           </div>
                         </div>
-                        <PlanLabel plan={org.plan} />
                       </div>
 
                       {/* One row on mobile (stats left, action right); display:contents at sm+

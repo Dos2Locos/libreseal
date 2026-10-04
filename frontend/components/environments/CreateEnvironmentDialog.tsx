@@ -1,7 +1,7 @@
 import { FaPlus } from 'react-icons/fa'
 import GenericDialog from '../common/GenericDialog'
 import { GetGlobalAccessUsers } from '@/graphql/queries/organisation/getGlobalAccessUsers.gql'
-import { ApiEnvironmentEnvTypeChoices, ApiOrganisationPlanChoices } from '@/apollo/graphql'
+import { ApiEnvironmentEnvTypeChoices } from '@/apollo/graphql'
 import { useContext, useRef, useState } from 'react'
 import { organisationContext } from '@/contexts/organisationContext'
 import { useMutation, useQuery } from '@apollo/client'
@@ -13,9 +13,7 @@ import { GetAppEnvironments } from '@/graphql/queries/secrets/getAppEnvironments
 import { toast } from 'react-toastify'
 import Spinner from '../common/Spinner'
 import { Alert } from '../common/Alert'
-import { UpsellDialog } from '../settings/organisation/UpsellDialog'
 import { sanitizeInput } from '@/utils/environment'
-import { PlanLabel } from '../settings/organisation/PlanLabel'
 
 export const CreateEnvironmentDialog = (props: { appId: string }) => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
@@ -32,26 +30,6 @@ export const CreateEnvironmentDialog = (props: { appId: string }) => {
   })
 
   const isLoading = orgAdminsDataLoading || appDataLoading
-
-  const allowNewEnv = () => {
-    if (!organisation?.planDetail?.maxEnvsPerApp) return true
-    return appData?.appEnvironments.length < organisation.planDetail?.maxEnvsPerApp
-  }
-
-  const planDisplay = () => {
-    if (organisation?.plan === ApiOrganisationPlanChoices.Fr)
-      return {
-        planName: 'Free',
-        dialogTitle: 'Upgrade to Pro',
-        description: `The Free plan is limited to ${organisation.planDetail!.maxEnvsPerApp!} Environments per App. To create more Environments, please upgrade to Pro.`,
-      }
-    else if (organisation?.plan === ApiOrganisationPlanChoices.Pr)
-      return {
-        planName: 'Pro',
-        dialogTitle: 'Upgrade to Enterprise',
-        description: `The Pro plan is limited to ${organisation.planDetail!.maxEnvsPerApp!} Environments per App. To create more Environments, please upgrade to Enterprise.`,
-      }
-  }
 
   const [createEnvironment, { loading }] = useMutation(CreateEnv)
 
@@ -104,36 +82,9 @@ export const CreateEnvironmentDialog = (props: { appId: string }) => {
       </div>
     )
 
-  if (!allowNewEnv()) {
-    // Custom environments are a Pro feature (up to 10/app); Enterprise is unlimited.
-    // The upgrade target tracks the org's current plan, not the hosting mode.
-    const isFreePlan = organisation?.plan === ApiOrganisationPlanChoices.Fr
-    const targetPlan = isFreePlan
-      ? ApiOrganisationPlanChoices.Pr
-      : ApiOrganisationPlanChoices.En
-
-    return (
-      <UpsellDialog
-        title={
-          isFreePlan
-            ? 'Upgrade to Pro to create custom environments'
-            : 'Upgrade to Enterprise for unlimited environments'
-        }
-        targetPlan={targetPlan}
-        buttonLabel={
-          <span className="flex items-center gap-2 truncate">
-            <FaPlus className="shrink-0" /> <span className="truncate">New Environment</span>{' '}
-            <PlanLabel plan={targetPlan} />
-          </span>
-        }
-        buttonVariant="outline"
-      />
-    )
-  }
-
   return (
     <GenericDialog
-      title={allowNewEnv() ? 'Create a new Environment' : planDisplay()?.dialogTitle || ''}
+      title="Create a new Environment"
       ref={dialogRef}
       onClose={() => {}}
       buttonVariant={'outline'}

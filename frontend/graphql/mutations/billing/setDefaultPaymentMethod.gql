@@ -1,5 +1,0 @@
-mutation SetDefaultStripePaymentMethodOp($organisationId: ID!, $paymentMethodId: String!) {
-  setDefaultPaymentMethod(organisationId: $organisationId, paymentMethodId: $paymentMethodId) {
-    ok
-  }
-}

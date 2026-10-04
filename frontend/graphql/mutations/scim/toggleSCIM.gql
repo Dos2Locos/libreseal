@@ -1,5 +1,0 @@
-mutation ToggleSCIMOp($organisationId: ID!, $enabled: Boolean!) {
-  toggleScim(organisationId: $organisationId, enabled: $enabled) {
-    ok
-  }
-}

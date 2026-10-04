@@ -4,29 +4,11 @@ import { unwrapEnvSecretsForUser, decryptEnvSecretKVs } from '@/utils/crypto'
 import { AppSecret, AppFolder, EnvSecrets, EnvFolders } from '../types'
 import { GetAppSecrets } from '@/graphql/queries/secrets/getAppSecrets.gql'
 import { KeyringContext } from '@/contexts/keyringContext'
-import { EnvironmentType, DynamicSecretType } from '@/apollo/graphql'
-import { decryptDynamicSecretKeyNames } from '@/ee/utils/dynamicSecrets'
-
-// Types for dynamic secrets
-type EnvDynamicSecrets = {
-  env: EnvironmentType
-  dynamicSecrets: DynamicSecretType[]
-}
-
-type AppDynamicSecret = {
-  id: string
-  name: string
-  path: string
-  envs: {
-    env: EnvironmentType
-    dynamicSecret: DynamicSecretType | null
-  }[]
-}
+import { EnvironmentType } from '@/apollo/graphql'
 
 export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: number = 10000) => {
   const [appSecrets, setAppSecrets] = useState<AppSecret[]>([])
   const [appFolders, setAppFolders] = useState<AppFolder[]>([])
-  const [appDynamicSecrets, setAppDynamicSecrets] = useState<AppDynamicSecret[]>([])
   const [fetching, setFetching] = useState(true)
 
   const { keyring } = useContext(KeyringContext)
@@ -44,12 +26,10 @@ export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: 
     async (appEnvironments: EnvironmentType[], secretsData: any) => {
       const envSecrets: EnvSecrets[] = []
       const envFolders: EnvFolders[] = []
-      const envDynamicSecrets: EnvDynamicSecrets[] = []
 
       for (const env of appEnvironments) {
         const secrets = secretsData[env.id]?.secrets || []
         const folders = secretsData[env.id]?.folders || []
-        const dynamicSecrets = secretsData[env.id]?.dynamicSecrets || []
 
         const { wrappedSeed, wrappedSalt } = env
 
@@ -60,14 +40,9 @@ export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: 
           keyring!
         )
         const decryptedSecrets = await decryptEnvSecretKVs(secrets, { publicKey, privateKey })
-        const decryptedDynamicSecrets = await decryptDynamicSecretKeyNames(dynamicSecrets, {
-          publicKey,
-          privateKey,
-        })
 
         envSecrets.push({ env, secrets: decryptedSecrets })
         envFolders.push({ env, folders })
-        envDynamicSecrets.push({ env, dynamicSecrets: decryptedDynamicSecrets })
       }
 
       // Combine secrets across environments and remove duplicates based on keys
@@ -101,27 +76,8 @@ export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: 
         })),
       }))
 
-      // Combine dynamic secrets across environments and remove duplicates based on name + path
-      const appDynamicSecrets = Array.from(
-        new Set(
-          envDynamicSecrets.flatMap((env) =>
-            env.dynamicSecrets.map((ds) => `${ds.name}::${ds.path}`)
-          )
-        )
-      ).map((namePathKey) => {
-        const [name, path] = namePathKey.split('::')
-        const envs = envDynamicSecrets.map((env) => ({
-          env: env.env,
-          dynamicSecret:
-            env.dynamicSecrets.find((ds) => ds.name === name && ds.path === path) || null,
-        }))
-
-        return { id: `${appId}-${namePathKey}`, name, path, envs }
-      })
-
       setAppSecrets(appSecrets)
       setAppFolders(appFolders)
-      setAppDynamicSecrets(appDynamicSecrets)
       setFetching(false)
     },
     [keyring, appId]
@@ -137,7 +93,6 @@ export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: 
         acc[env.id] = {
           secrets: env.secrets,
           folders: env.folders,
-          dynamicSecrets: env.dynamicSecrets,
         }
         return acc
       }, {})
@@ -151,7 +106,6 @@ export const useAppSecrets = (appId: string, allowFetch: boolean, pollInterval: 
     appEnvironments: appSecretsData?.appEnvironments as EnvironmentType[],
     appSecrets,
     appFolders,
-    appDynamicSecrets,
     fetching,
     refetch,
   }

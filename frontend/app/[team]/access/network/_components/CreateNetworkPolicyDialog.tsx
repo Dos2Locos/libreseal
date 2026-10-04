@@ -1,3 +1,6 @@
+import { Button } from '@/components/common/Button'
+import { UnavailableBadge } from '@/components/common/UnavailableFeature'
+import { useFeature } from '@/hooks/useFeature'
 import GenericDialog from '@/components/common/GenericDialog'
 import { organisationContext } from '@/contexts/organisationContext'
 import { useContext, useRef } from 'react'
@@ -7,13 +10,10 @@ import { GetNetworkPolicies } from '@/graphql/queries/access/getNetworkPolicies.
 import { useMutation } from '@apollo/client'
 import { toast } from 'react-toastify'
 import { NetworkAccessPolicyForm } from '@/components/access/NetworkAccessPolicyForm'
-import { ApiOrganisationPlanChoices } from '@/apollo/graphql'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
-import { isCloudHosted } from '@/utils/appConfig'
 
 export const CreateNetworkAccessPolicyDialog = ({ clientIp }: { clientIp: string }) => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
+  const networkPoliciesAvailable = useFeature('network_policies')
 
   const [createPolicy, { loading }] = useMutation(CreateAccessPolicy)
 
@@ -47,19 +47,11 @@ export const CreateNetworkAccessPolicyDialog = ({ clientIp }: { clientIp: string
 
   if (!organisation) return <></>
 
-  if (organisation.plan === ApiOrganisationPlanChoices.Fr)
+  if (!networkPoliciesAvailable)
     return (
-      <UpsellDialog
-        title={`Upgrade to ${isCloudHosted() ? 'Pro' : 'Enterprise'} to create a Network Access Policy`}
-        buttonLabel={
-          <>
-            <FaPlus /> Create policy{' '}
-            <PlanLabel
-              plan={isCloudHosted() ? ApiOrganisationPlanChoices.Pr : ApiOrganisationPlanChoices.En}
-            />{' '}
-          </>
-        }
-      />
+      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
+        <FaPlus /> Create policy <UnavailableBadge />
+      </Button>
     )
 
   return (

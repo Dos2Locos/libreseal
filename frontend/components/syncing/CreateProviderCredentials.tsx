@@ -2,7 +2,6 @@ import { ProviderType } from '@/apollo/graphql'
 import GetProviderList from '@/graphql/queries/syncing/getProviders.gql'
 import GetSavedCredentials from '@/graphql/queries/syncing/getSavedCredentials.gql'
 import SaveNewProviderCreds from '@/graphql/mutations/syncing/saveNewProviderCreds.gql'
-import ValidateRotationCredentials from '@/graphql/mutations/syncing/validateRotationCredentials.gql'
 import { useState, useEffect, useContext, Fragment } from 'react'
 import { FaArrowRight } from 'react-icons/fa'
 import { Button } from '../common/Button'
@@ -67,9 +66,7 @@ export const CreateProviderCredentials = (props: {
 
   const { data: providersData } = useQuery(GetProviderList)
   const [saveNewCreds] = useMutation(SaveNewProviderCreds)
-  const [validateRotationCreds] = useMutation(ValidateRotationCredentials)
 
-  const ROTATION_PROVIDER_IDS = ['litellm', 'openai']
 
   const [validating, setValidating] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -156,32 +153,6 @@ export const CreateProviderCredentials = (props: {
       providersData.serverPublicKey
     )
     const encryptedCredentials = JSON.stringify(encryptedCredentialsObj)
-
-    if (ROTATION_PROVIDER_IDS.includes(provider.id)) {
-      setValidating(true)
-      try {
-        const { data: validationData } = await validateRotationCreds({
-          variables: {
-            organisationId: organisation!.id,
-            providerId: provider.id,
-            credentials: encryptedCredentials,
-          },
-        })
-        const result = validationData?.validateRotationCredentials
-        if (!result?.valid) {
-          setValidationError(
-            result?.error ||
-              'The provider rejected these credentials. Verify the key is correct.'
-          )
-          return
-        }
-      } catch (err) {
-        setValidationError('Could not reach the provider to validate credentials.')
-        return
-      } finally {
-        setValidating(false)
-      }
-    }
 
     await saveNewCreds({
       variables: {

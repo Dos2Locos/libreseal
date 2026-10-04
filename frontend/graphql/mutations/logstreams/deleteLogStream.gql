@@ -1,5 +1,0 @@
-mutation DeleteLogStreamOp($streamId: ID!) {
-  deleteLogStream(streamId: $streamId) {
-    ok
-  }
-}

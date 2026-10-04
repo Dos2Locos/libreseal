@@ -19,10 +19,9 @@ import {
 import { organisationContext } from '@/contexts/organisationContext'
 import { SidebarContext } from '@/contexts/sidebarContext'
 import { Fragment, useContext, useEffect, useState } from 'react'
-import { ApiOrganisationPlanChoices, OrganisationType } from '@/apollo/graphql'
+import { OrganisationType } from '@/apollo/graphql'
 import { Menu, Transition } from '@headlessui/react'
 import { Button } from '../common/Button'
-import { PlanLabel } from '../settings/organisation/PlanLabel'
 import { FaListUl } from 'react-icons/fa6'
 
 export type SidebarLinkT = {
@@ -203,21 +202,15 @@ const Sidebar = () => {
   }, [])
 
   const OrgsMenu = () => {
-    const planStyle = () => {
-      if (activeOrganisation?.plan === ApiOrganisationPlanChoices.Fr)
-        return 'ring-neutral-500/40 bg-neutral-500/40 text-zinc-900 dark:bg-zinc-800 dark:text-neutral-500'
-      if (activeOrganisation?.plan === ApiOrganisationPlanChoices.Pr)
-        return 'ring-emerald-400/10 bg-emerald-400 text-zinc-900 dark:bg-emerald-400/10 dark:text-emerald-400'
-      if (activeOrganisation?.plan === ApiOrganisationPlanChoices.En)
-        return 'ring-amber-400/10 bg-amber-400 text-zinc-900 dark:bg-amber-400/10 dark:text-amber-400'
-    }
+    const orgBadgeStyle = () =>
+      'ring-emerald-400/10 bg-emerald-400 text-zinc-900 dark:bg-emerald-400/10 dark:text-emerald-400'
 
     const OrgLabel = ({ open }: { open?: boolean }) => (
       <div
         className={clsx(
           'text-neutral-500 flex items-center transition-colors ease rounded-lg relative',
           collapsed
-            ? `p-1 justify-center mb-[22px] ${planStyle()}`
+            ? `p-1 justify-center mb-[22px] ${orgBadgeStyle()}`
             : 'p-2 justify-between w-full bg-neutral-500/10 ring-1 ring-inset ring-neutral-400/10'
         )}
       >
@@ -229,9 +222,6 @@ const Sidebar = () => {
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 overflow-hidden">
-            <div>
-              <PlanLabel plan={activeOrganisation?.plan!} />
-            </div>
             {/* text-left: the full-width span sits inside a <button>, which centers text by default */}
             <span className="block w-full truncate text-left font-semibold tracking-wider text-base">
               {activeOrganisation?.name}
@@ -297,9 +287,6 @@ const Sidebar = () => {
                             } group flex w-full gap-2 items-center justify-between px-2 py-2 border-b border-neutral-500/20`}
                           >
                             <div className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
-                              <div>
-                                <PlanLabel plan={org?.plan!} />
-                              </div>
                               <span className="block w-full truncate text-left font-medium text-sm">
                                 {org.name}
                               </span>

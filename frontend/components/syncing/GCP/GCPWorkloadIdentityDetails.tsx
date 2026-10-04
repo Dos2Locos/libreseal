@@ -1,6 +1,6 @@
 import { FaCopy } from 'react-icons/fa'
 import CopyButton from '@/components/common/CopyButton'
-import { LogField } from '@/app/[team]/access/scim/_components/shared'
+import { LogField } from '@/components/common/LogField'
 import { parseJwks } from '@/utils/syncing/gcp'
 
 const shorten = (value: string) =>

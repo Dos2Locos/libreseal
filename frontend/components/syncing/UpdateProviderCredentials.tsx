@@ -5,7 +5,6 @@ import { FaCheck } from 'react-icons/fa'
 import GetServerKey from '@/graphql/queries/syncing/getServerKey.gql'
 
 import UpdateProviderCreds from '@/graphql/mutations/syncing/updateProviderCreds.gql'
-import ValidateRotationCredentials from '@/graphql/mutations/syncing/validateRotationCredentials.gql'
 import { useMutation, useQuery } from '@apollo/client'
 import { toast } from 'react-toastify'
 import { Input } from '@/components/common/Input'
@@ -30,7 +29,6 @@ export const UpdateProviderCredentials = (props: { credential: ProviderCredentia
 
   const { data } = useQuery(GetServerKey)
   const [updateCredentials] = useMutation(UpdateProviderCreds)
-  const [validateRotationCreds] = useMutation(ValidateRotationCredentials)
   const [name, setName] = useState<string>(credential.name)
   // credentials is withheld (null) without IntegrationCredentials read
   const [credentials, setCredentials] = useState<CredentialState>(
@@ -41,7 +39,6 @@ export const UpdateProviderCredentials = (props: { credential: ProviderCredentia
   const [validating, setValidating] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
-  const ROTATION_PROVIDER_IDS = ['litellm', 'openai']
 
   useEffect(() => {
     const credsAreEqual = isEqual(credentials, JSON.parse(credential.credentials || '{}') ?? {})
@@ -65,32 +62,6 @@ export const UpdateProviderCredentials = (props: { credential: ProviderCredentia
     const encryptedCredentials = JSON.stringify(
       await encryptProviderCredentials(credential.provider!, credentials, data.serverPublicKey)
     )
-
-    if (credential.provider && ROTATION_PROVIDER_IDS.includes(credential.provider.id!)) {
-      setValidating(true)
-      try {
-        const { data: validationData } = await validateRotationCreds({
-          variables: {
-            organisationId: organisation!.id,
-            providerId: credential.provider.id,
-            credentials: encryptedCredentials,
-          },
-        })
-        const result = validationData?.validateRotationCredentials
-        if (!result?.valid) {
-          setValidationError(
-            result?.error ||
-              'The provider rejected these credentials. Verify the key is correct.'
-          )
-          return
-        }
-      } catch (err) {
-        setValidationError('Could not reach the provider to validate credentials.')
-        return
-      } finally {
-        setValidating(false)
-      }
-    }
 
     await updateCredentials({
       variables: {

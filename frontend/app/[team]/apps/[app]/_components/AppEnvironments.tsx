@@ -2,7 +2,7 @@
 
 import { GetAppEnvironments } from '@/graphql/queries/secrets/getAppEnvironments.gql'
 import { UpdateEnvOrder } from '@/graphql/mutations/environments/updateEnvironmentOrder.gql'
-import { EnvironmentType, ApiOrganisationPlanChoices } from '@/apollo/graphql'
+import { EnvironmentType } from '@/apollo/graphql'
 import { Button } from '@/components/common/Button'
 import { Card } from '@/components/common/Card'
 import { CreateEnvironmentDialog } from '@/components/environments/CreateEnvironmentDialog'
@@ -52,7 +52,7 @@ export const AppEnvironments = ({ appId }: { appId: string }) => {
   )
 
   const allowReordering =
-    organisation?.plan !== ApiOrganisationPlanChoices.Fr && userCanUpdateEnvironments
+    userCanUpdateEnvironments
 
   const pathname = usePathname()
 

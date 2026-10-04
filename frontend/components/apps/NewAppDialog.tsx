@@ -6,7 +6,7 @@ import { toast } from 'react-toastify'
 import { Button } from '../common/Button'
 import { GetGlobalAccessUsers } from '@/graphql/queries/organisation/getGlobalAccessUsers.gql'
 import { useQuery } from '@apollo/client'
-import { ApiOrganisationPlanChoices, OrganisationType } from '@/apollo/graphql'
+import { OrganisationType } from '@/apollo/graphql'
 import { KeyringContext } from '@/contexts/keyringContext'
 import { MAX_INPUT_STRING_LENGTH } from '@/constants'
 import { Alert } from '../common/Alert'
@@ -107,25 +107,8 @@ const NewAppDialog = forwardRef(
       })
     }
 
-    const allowNewApp = () => {
-      if (!organisation.planDetail?.maxApps) return true
-      return appCount < organisation.planDetail?.maxApps
-    }
-
-    const planDisplay = () => {
-      if (organisation.plan === ApiOrganisationPlanChoices.Fr)
-        return {
-          planName: 'Free',
-          dialogTitle: 'Upgrade to Pro',
-          description: `The Free plan is limited to ${organisation.planDetail?.maxApps} Apps. To create more Apps, please upgrade to Pro.`,
-        }
-      else if (organisation.plan === ApiOrganisationPlanChoices.Pr)
-        return {
-          planName: 'Pro',
-          dialogTitle: 'Upgrade to Enterprise',
-          description: `The Pro plan is limited to ${organisation.planDetail?.maxApps} Apps. To create more Apps, please upgrade to Enterprise.`,
-        }
-    }
+    // LibreSeal has no app quota.
+    const allowNewApp = () => true
 
     return (
       <>
@@ -166,7 +149,6 @@ const NewAppDialog = forwardRef(
                       <div className="flex items-center gap-4">
                         <h3 className="text-lg font-medium leading-6 text-black dark:text-white">
                           {allowNewApp() && 'Create an App'}
-                          {!allowNewApp() && !createSuccess && planDisplay()?.dialogTitle}
                         </h3>
                         <div
                           className="rounded-md px-2 text-2xs font-semibold flex items-center gap-1 text-emerald-500 bg-emerald-400/10 cursor-help"
