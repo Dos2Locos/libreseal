@@ -169,21 +169,21 @@ class PublicAppsView(APIView):
                 seen.add(lower)
             if not can_use_custom_envs(org):
                 return Response(
-                    {"error": "Custom environments are not available on the Free plan."},
+                    {"error": "Custom environments are not available."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
             # Enforce the per-app environment quota (Free=3, Pro=10,
             # Enterprise/licensed=unlimited) on the requested environment list.
             if not can_add_environments(org, len(custom_envs)):
                 return Response(
-                    {"error": "Environment quota exceeded for this app's plan."},
+                    {"error": "Environment limit reached for this app."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
         # --- Check quota ---
         if not can_add_app(org):
             return Response(
-                {"error": "App quota exceeded for this organisation's plan."},
+                {"error": "App limit reached for this organisation."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

@@ -434,7 +434,7 @@ class TestPublicAppsViewCreate:
         )
         response = self.view(request)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "Free plan" in response.data["error"]
+        assert "not available" in response.data["error"]
 
     @patch("api.views.apps.AppSerializer")
     @patch("api.views.apps.create_environment")
@@ -497,7 +497,7 @@ class TestPublicAppsViewCreate:
         )
         response = self.view(request)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "quota" in response.data["error"].lower()
+        assert "limit" in response.data["error"].lower()
         mock_create_env.assert_not_called()
 
 

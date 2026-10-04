@@ -1,168 +1,59 @@
-from django.apps import apps
-from django.utils import timezone
-from django.conf import settings
+"""Resource limits and feature checks.
 
-from ee.licensing.utils import organisation_has_valid_license
+LibreSeal has no commercial plans: there are no app, environment, seat or
+service account quotas. These helpers keep their upstream signatures so call
+sites do not change, but they only consult the LibreSeal edition registry
+(``backend.edition``). Access is still governed by RBAC at each call site.
+"""
+
+from backend.edition import Feature, feature_enabled
 
 
-# Determine if the application is cloud-hosted based on the APP_HOST setting
-CLOUD_HOSTED = settings.APP_HOST == "cloud"
-
-# Adjust the PLAN_CONFIG based on whether the application is cloud-hosted
-PLAN_CONFIG = {
-    "FR": {
-        "name": "Free",
-        "max_users": 5 if CLOUD_HOSTED else None,
-        "max_apps": 3 if CLOUD_HOSTED else None,
-        "max_envs_per_app": 3,
-    },
-    "PR": {
-        "name": "Pro",
-        "max_users": None,
-        "max_apps": None,
-        "max_envs_per_app": 10,
-    },
-    "EN": {
-        "name": "Enterprise",
-        "max_users": None,
-        "max_apps": None,
-        "max_envs_per_app": None,
-    },
+# Limits reported to clients through the organisationPlan query. ``None`` means
+# unlimited. The upstream per-plan table is intentionally not reproduced.
+LIBRESEAL_LIMITS = {
+    "name": "LibreSeal",
+    "max_users": None,
+    "max_apps": None,
+    "max_envs_per_app": None,
 }
 
 
 def can_add_app(organisation):
-    """Check if a new app can be added to the organisation."""
-
-    App = apps.get_model("api", "App")
-
-    if organisation_has_valid_license(organisation):
-        return True
-
-    current_app_count = App.objects.filter(
-        organisation=organisation, is_deleted=False
-    ).count()
-
-    plan_limits = PLAN_CONFIG[organisation.plan]
-    if plan_limits["max_apps"] is None:
-        return True
-    return current_app_count < plan_limits["max_apps"]
+    """Apps are unlimited in LibreSeal."""
+    return True
 
 
 def can_add_account(organisation, count=1, account_type="user"):
-    """Check if a new human or service account can be added to the organisation."""
-
-    Organisation = apps.get_model("api", "Organisation")
-    OrganisationMember = apps.get_model("api", "OrganisationMember")
-    OrganisationMemberInvite = apps.get_model("api", "OrganisationMemberInvite")
-    ServiceAccount = apps.get_model("api", "ServiceAccount")
-
-    if not CLOUD_HOSTED and organisation.plan == Organisation.FREE_PLAN:
-        return True
-
-    # If the organisation is on pricing version 2 and not on the free plan,
-    # service accounts are not limited by quotas.
-    if (
-        organisation.pricing_version == Organisation.PRICING_V2
-        and organisation.plan != Organisation.FREE_PLAN
-        and account_type == "service_account"
-    ):
-        return True
-
-    from ee.billing.utils import get_org_seat_limit
-
-    # Calculate the current count of users
-    current_human_user_count = (
-        OrganisationMember.objects.filter(
-            organisation=organisation, deleted_at=None
-        ).count()
-        + OrganisationMemberInvite.objects.filter(
-            organisation=organisation, valid=True, expires_at__gte=timezone.now()
-        ).count()
-    )
-
-    current_service_account_count = 0
-    # Include service accounts in the count only if strictly required based on plan/version
-    if (
-        organisation.pricing_version == Organisation.PRICING_V1
-        or organisation.plan == Organisation.FREE_PLAN
-    ):
-        current_service_account_count = ServiceAccount.objects.filter(
-            organisation=organisation, deleted_at=None
-        ).count()
-
-    total_account_count = current_human_user_count + current_service_account_count
-
-    seats = get_org_seat_limit(organisation)
-
-    # If there's no limit, allow unlimited additions
-    if seats is None:
-        return True
-
-    # Check if the total account count is below the limit
-    return total_account_count + count <= seats
+    """Human and service accounts are unlimited in LibreSeal."""
+    return True
 
 
 def can_add_environment(app):
-    """Check if a new environment can be added to the app."""
-
-    Environment = apps.get_model("api", "Environment")
-
-    if organisation_has_valid_license(app.organisation):
-        return True
-
-    current_env_count = Environment.objects.filter(app=app).count()
-    plan_limits = PLAN_CONFIG[app.organisation.plan]
-    if plan_limits["max_envs_per_app"] is None:
-        return True
-    return current_env_count < plan_limits["max_envs_per_app"]
+    """Environments per app are unlimited in LibreSeal."""
+    return True
 
 
 def can_add_environments(organisation, count):
-    """Check whether `count` environments can be added to a brand-new app.
-
-    Used when creating an app together with its environments in a single
-    request (e.g. the public apps API), where the app does not exist yet and
-    therefore starts with zero environments. For adding environments to an
-    existing app, use `can_add_environment(app)` instead.
-    """
-
-    if organisation_has_valid_license(organisation):
-        return True
-
-    max_envs = PLAN_CONFIG[organisation.plan]["max_envs_per_app"]
-    if max_envs is None:
-        return True
-    return count <= max_envs
+    """Environments for a new app are unlimited in LibreSeal."""
+    return True
 
 
 def can_use_custom_envs(organisation):
-    return organisation.plan != "FR"
+    return feature_enabled(Feature.CUSTOM_ENVIRONMENTS)
 
 
 def can_use_teams(organisation):
-    """Teams require a Pro or Enterprise plan (or a valid license)."""
-    if organisation_has_valid_license(organisation):
-        return True
+    return feature_enabled(Feature.TEAMS)
 
-    return organisation.plan in ("PR", "EN")
 
 def can_use_scim(organisation):
-    """SCIM provisioning requires an Enterprise plan or a valid license."""
-    if organisation_has_valid_license(organisation):
-        return True
-
-    return organisation.plan == "EN"
+    return feature_enabled(Feature.SCIM)
 
 
 def can_use_log_streams(organisation):
-    """Log Streams require an Enterprise plan."""
-    return organisation.plan == "EN"
+    return feature_enabled(Feature.LOG_STREAMS)
 
 
 def can_use_rotating_secrets(organisation):
-    """Rotating Secrets require a Pro or Enterprise plan (or a valid license)."""
-    if organisation_has_valid_license(organisation):
-        return True
-
-    return organisation.plan in ("PR", "EN")
+    return feature_enabled(Feature.SECRET_ROTATION)

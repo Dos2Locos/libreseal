@@ -149,13 +149,6 @@ class PublicRolesView(APIView):
     def post(self, request, *args, **kwargs):
         org = self._get_org(request)
 
-        # Free plan gate
-        if org.plan == Organisation.FREE_PLAN:
-            return Response(
-                {"error": "Custom roles are not available on your organisation's plan."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         # Validate name
         name, err = validate_text_field(request.data.get("name"), "name", max_length=64)
         if err:
@@ -296,13 +289,6 @@ class PublicRoleDetailView(APIView):
             if role.is_default:
                 return Response(
                     {"error": "Default roles cannot be modified."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            # Free plan gate
-            if org.plan == Organisation.FREE_PLAN:
-                return Response(
-                    {"error": "Custom roles are not available on your organisation's plan."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 

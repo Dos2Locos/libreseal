@@ -94,7 +94,7 @@ class CreateTeamMutation(graphene.Mutation):
 
         if not can_use_teams(org):
             raise GraphQLError(
-                "Teams require a Pro or Enterprise plan. Please upgrade to use this feature."
+                "Teams are not available."
             )
 
         if not name or not name.strip():

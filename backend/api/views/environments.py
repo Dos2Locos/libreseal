@@ -109,13 +109,13 @@ class PublicEnvironmentsView(APIView):
 
         if not can_add_environment(app):
             return Response(
-                {"error": "Environment quota exceeded for this app's plan."},
+                {"error": "Environment limit reached for this app."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -261,7 +261,7 @@ class PublicEnvironmentDetailView(APIView):
 
         if env.env_type not in ("dev", "staging", "prod") and not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -316,7 +316,7 @@ class PublicEnvironmentDetailView(APIView):
 
         if env.env_type not in ("dev", "staging", "prod") and not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

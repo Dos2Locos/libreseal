@@ -168,7 +168,7 @@ class CreateEnvironmentMutation(graphene.Mutation):
         )
         if is_custom_env and not can_use_custom_envs(app.organisation):
             raise GraphQLError(
-                "Custom environments are not available on the Free plan. Upgrade to Pro to create custom environments."
+                "Custom environments are not available."
             )
 
         if not can_add_environment(app):

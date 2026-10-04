@@ -251,7 +251,10 @@ def test_create_role_duplicate_name_409(mock_role_cls, mock_org_cls, mock_perm):
 
 @patch("api.views.roles.user_has_permission", return_value=True)
 @patch("api.views.roles.Organisation")
-def test_create_role_free_plan_403(mock_org_cls, mock_perm):
+def test_create_role_not_gated_by_stored_free_plan(mock_org_cls, mock_perm):
+    """LibreSeal has no plans: a stored Free plan must not block custom roles.
+    An over-long name proves the request got past any plan gate to
+    validation (400 rather than 403)."""
     org = _make_org(plan=FREE_PLAN)
     mock_org_cls.FREE_PLAN = FREE_PLAN
 
@@ -259,12 +262,12 @@ def test_create_role_free_plan_403(mock_org_cls, mock_perm):
         "post",
         "/public/v1/roles/",
         org,
-        data={"name": "Custom", "permissions": {"permissions": {}}},
+        data={"name": "x" * 65, "permissions": {"permissions": {}}},
     )
     view = PublicRolesView.as_view()
     response = view(request)
 
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @patch("api.views.roles.user_has_permission", return_value=True)

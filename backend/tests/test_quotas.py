@@ -1,14 +1,10 @@
-"""Unit tests for backend.quotas helpers."""
+"""Unit tests for backend.quotas helpers in LibreSeal (no plan quotas)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from backend.quotas import can_add_environments
-from ee.licensing.utils import organisation_has_valid_license
-
-_Q = "backend.quotas"
-_L = "ee.licensing.utils"
+from backend import quotas
 
 
 def _org(plan):
@@ -17,78 +13,35 @@ def _org(plan):
     return org
 
 
-@pytest.mark.parametrize(
-    "plan,count,expected",
-    [
-        ("FR", 3, True),   # Free: at the 3-env limit
-        ("FR", 4, False),  # Free: over the limit
-        ("PR", 10, True),  # Pro: at the 10-env limit
-        ("PR", 11, False), # Pro: over the limit
-        ("EN", 999, True), # Enterprise: unlimited
-    ],
-)
-def test_can_add_environments_enforces_plan_limits(plan, count, expected):
-    # No valid license -> plan limits apply.
-    with patch(f"{_Q}.organisation_has_valid_license", return_value=False):
-        assert can_add_environments(_org(plan), count) is expected
+@pytest.mark.parametrize("plan", ["FR", "PR", "EN"])
+def test_no_quotas_regardless_of_stored_plan(plan):
+    org = _org(plan)
+    app = MagicMock(organisation=org)
+
+    assert quotas.can_add_app(org) is True
+    assert quotas.can_add_account(org, count=500) is True
+    assert quotas.can_add_account(org, count=500, account_type="service_account")
+    assert quotas.can_add_environment(app) is True
+    assert quotas.can_add_environments(org, 100) is True
 
 
-def test_can_add_environments_valid_license_bypasses_limit():
-    # A valid (non-expired) license lifts the per-app env cap regardless of plan.
-    with patch(f"{_Q}.organisation_has_valid_license", return_value=True):
-        assert can_add_environments(_org("FR"), 100) is True
+@pytest.mark.parametrize("plan", ["FR", "PR", "EN"])
+def test_core_features_available_regardless_of_stored_plan(plan):
+    org = _org(plan)
+    assert quotas.can_use_custom_envs(org) is True
+    assert quotas.can_use_teams(org) is True
 
 
-@pytest.mark.parametrize(
-    "plan,expected",
-    [
-        ("FR", False),
-        ("PR", False),
-        ("EN", True),
-    ],
-)
-def test_can_use_log_streams_is_enterprise_only(plan, expected):
-    from backend.quotas import can_use_log_streams
-
-    assert can_use_log_streams(_org(plan)) is expected
+@pytest.mark.parametrize("plan", ["FR", "PR", "EN"])
+def test_enterprise_only_features_unavailable_even_on_en_plan(plan):
+    """A stored Enterprise plan must not unlock features LibreSeal lacks."""
+    org = _org(plan)
+    assert quotas.can_use_scim(org) is False
+    assert quotas.can_use_log_streams(org) is False
+    assert quotas.can_use_rotating_secrets(org) is False
 
 
-def test_can_use_log_streams_ignores_license_validity():
-    """Plan is the single source of truth: license activation stamps the
-    licensed tier onto organisation.plan, so a Pro-tier license (plan PR)
-    must NOT unlock this Enterprise feature via a license short-circuit."""
-    from backend.quotas import can_use_log_streams
-
-    with patch(f"{_Q}.organisation_has_valid_license", return_value=True):
-        assert can_use_log_streams(_org("PR")) is False
-        assert can_use_log_streams(_org("EN")) is True
-
-
-def test_valid_license_check_filters_on_expiry():
-    """organisation_has_valid_license must exclude expired licenses by filtering
-    on expires_at, not merely check that a license row exists."""
-    model = MagicMock()
-    model.objects.filter.return_value.exists.return_value = True
-
-    with patch(f"{_L}.apps.get_model", return_value=model):
-        assert organisation_has_valid_license(_org("EN")) is True
-
-    _, kwargs = model.objects.filter.call_args
-    assert "expires_at__gte" in kwargs
-
-
-def test_expired_license_does_not_count_as_valid():
-    """A stale (expired) license row must not be treated as valid: the
-    expiry-filtered query returns nothing even though a row exists."""
-
-    def _filter(**kwargs):
-        qs = MagicMock()
-        # The expiry-filtered query (the correct one) finds no *valid* license.
-        qs.exists.return_value = "expires_at__gte" not in kwargs
-        return qs
-
-    model = MagicMock()
-    model.objects.filter.side_effect = _filter
-
-    with patch(f"{_L}.apps.get_model", return_value=model):
-        assert organisation_has_valid_license(_org("FR")) is False
+def test_reported_limits_are_unlimited():
+    assert quotas.LIBRESEAL_LIMITS["max_users"] is None
+    assert quotas.LIBRESEAL_LIMITS["max_apps"] is None
+    assert quotas.LIBRESEAL_LIMITS["max_envs_per_app"] is None
