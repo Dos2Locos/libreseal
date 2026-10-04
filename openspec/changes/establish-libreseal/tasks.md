@@ -2,14 +2,14 @@
 
 ## 1. Línea base y retirada de `ee/`
 
-- [ ] 1.1 Ejecutar la suite de backend upstream (`pytest` en contenedor o venv) y `yarn test`/`tsc --noEmit` del frontend antes de tocar código; guardar el resultado como línea base en `openspec/changes/establish-libreseal/validation.md`
-- [ ] 1.2 Crear `backend/backend/edition.py` (registro `Feature`/`feature_enabled`, D2) con tests unitarios en `backend/tests/test_edition.py`; verificar con `pytest tests/test_edition.py`
-- [ ] 1.3 Reescribir `backend/backend/quotas.py` sobre `edition` sin consultar plan ni licencia; reemplazar `tests/test_quotas.py` y `tests/graphene/queries/test_quotas.py` por tests de "sin límites"; verificar con `pytest tests/test_quotas.py tests/graphene/queries/test_quotas.py`
-- [ ] 1.4 Desacoplar arranque y settings (`settings.py` sin `check_license`/`ee.settings`, `api/config.py`, `rqworker.py`) y verificar que `python manage.py check` pasa con `backend/ee` ausente
-- [ ] 1.5 Desacoplar esquema GraphQL, tipos, URLs, `api/views/secrets.py`, modelos, señales, mutaciones de cuentas/organización/miembros/cuentas de servicio y SSO (D4); verificar con `python manage.py check` y `python manage.py graphql_schema` (o equivalente) sin `ee`
-- [ ] 1.6 Sustituir las comprobaciones `org.plan` de roles, acceso y SSO por `feature_enabled`; añadir tests de creación de rol personalizado, equipo y entorno personalizado en organización por defecto; verificar con `pytest`
-- [ ] 1.7 Implementar fail-closed de políticas de red en ambos middlewares y bloqueo de creación/asignación (D5) con tests (cuenta con política → 403; sin política → RBAC); verificar con `pytest`
-- [ ] 1.8 `git rm -r backend/ee backend/tests/ee` y adaptar/eliminar los tests MIT que mockean `ee.*` (listados en `audit.md` §2), documentando cada eliminación; verificar `pytest` completo verde y `git ls-files | grep -E '(^|/)ee/'` vacío en backend
+- [x] 1.1 Ejecutar la suite de backend upstream (`pytest` en contenedor o venv) y `yarn test`/`tsc --noEmit` del frontend antes de tocar código; guardar el resultado como línea base en `openspec/changes/establish-libreseal/validation.md`
+- [x] 1.2 Crear `backend/backend/edition.py` (registro `Feature`/`feature_enabled`, D2) con tests unitarios en `backend/tests/test_edition.py`; verificar con `pytest tests/test_edition.py`
+- [x] 1.3 Reescribir `backend/backend/quotas.py` sobre `edition` sin consultar plan ni licencia; reemplazar `tests/test_quotas.py` y `tests/graphene/queries/test_quotas.py` por tests de "sin límites"; verificar con `pytest tests/test_quotas.py tests/graphene/queries/test_quotas.py`
+- [x] 1.4 Desacoplar arranque y settings (`settings.py` sin `check_license`/`ee.settings`, `api/config.py`, `rqworker.py`) y verificar que `python manage.py check` pasa con `backend/ee` ausente
+- [x] 1.5 Desacoplar esquema GraphQL, tipos, URLs, `api/views/secrets.py`, modelos, señales, mutaciones de cuentas/organización/miembros/cuentas de servicio y SSO (D4); verificar con `python manage.py check` y `python manage.py graphql_schema` (o equivalente) sin `ee`
+- [x] 1.6 Sustituir las comprobaciones `org.plan` de roles, acceso y SSO por `feature_enabled`; añadir tests de creación de rol personalizado, equipo y entorno personalizado en organización por defecto; verificar con `pytest`
+- [x] 1.7 Implementar fail-closed de políticas de red en ambos middlewares y bloqueo de creación/asignación (D5) con tests (cuenta con política → 403; sin política → RBAC); verificar con `pytest`
+- [x] 1.8 `git rm -r backend/ee backend/tests/ee` y adaptar/eliminar los tests MIT que mockean `ee.*` (listados en `audit.md` §2), documentando cada eliminación; verificar `pytest` completo verde y `git ls-files | grep -E '(^|/)ee/'` vacío en backend
 
 ## 2. Frontend sin `ee/`, comercio ni telemetría
 
