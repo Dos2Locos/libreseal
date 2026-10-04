@@ -172,3 +172,6 @@ next-env.d.ts
 # graphql_schema --out artifact — regenerated locally; only the
 # frontend/apollo/schema.graphql copy is tracked.
 backend/schema.graphql
+
+# LibreSeal database backups
+/backups/
