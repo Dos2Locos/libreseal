@@ -96,16 +96,6 @@ class CreateOrganisationMutation(graphene.Mutation):
         except Exception as e:
             print(f"Error sending new user welcome email: {e}")
 
-        if settings.APP_HOST == "cloud":
-            from ee.billing.stripe import create_stripe_customer
-
-            create_stripe_customer(org, user.email)
-
-        if settings.PHASE_LICENSE:
-            from ee.licensing.utils import activate_license
-
-            activate_license(settings.PHASE_LICENSE)
-
         return CreateOrganisationMutation(organisation=org)
 
 
@@ -547,10 +537,6 @@ class CreateOrganisationMemberMutation(graphene.Mutation):
             invite.valid = False
             invite.save()
 
-            if settings.APP_HOST == "cloud":
-                from ee.billing.stripe import update_stripe_subscription_seats
-
-                update_stripe_subscription_seats(org)
 
             try:
                 send_user_joined_email(invite, org_member)
@@ -657,27 +643,10 @@ class DeleteOrganisationMemberMutation(graphene.Mutation):
         member_email = getattr(org_member.user, "email", "")
         member_display_name = get_member_display_name(org_member)
 
-        # SCIM-provisioned: deactivate (revoke team keys, wipe crypto, soft-delete OM)
-        # then hard-delete the SCIMUser. Targeted IdP ops on the old id 404; the
-        # next sync POSTs and re-adopts the OM under a fresh SCIM id.
-        scim_users = list(org_member.scimuser_set.all())
-        if scim_users:
-            from ee.authentication.scim.exceptions import SCIMDeactivationForbidden
-            from ee.authentication.scim.utils import deactivate_scim_user
+        # SCIM provisioning is not available in LibreSeal: members that were
+        # SCIM-provisioned in a migrated database are removed like any other.
+        org_member.delete()
 
-            for scim_user in scim_users:
-                try:
-                    deactivate_scim_user(scim_user)
-                except SCIMDeactivationForbidden as e:
-                    raise GraphQLError(str(e))
-                scim_user.delete()
-        else:
-            org_member.delete()
-
-        if settings.APP_HOST == "cloud":
-            from ee.billing.stripe import update_stripe_subscription_seats
-
-            update_stripe_subscription_seats(member_org)
 
         actor_type, actor_id, actor_metadata = get_actor_info_from_graphql(info, organisation=member_org)
         ip_address, user_agent = get_resolver_request_meta(info.context)
@@ -875,15 +844,7 @@ class TransferOrganisationOwnershipMutation(graphene.Mutation):
             current_member.role = admin_role
             current_member.save()
 
-        # 4. Update Stripe customer email if in cloud mode
-        if settings.APP_HOST == "cloud":
-            from ee.billing.stripe import update_stripe_customer_email
-
-            # Use provided billing_email or fall back to new owner's email
-            email_to_use = billing_email if billing_email else new_owner_member.user.email
-            update_stripe_customer_email(org, email_to_use)
-
-        # 5. Send email notifications to both old and new owner
+        # 4. Send email notifications to both old and new owner
         try:
             send_ownership_transferred_email(org, current_member, new_owner_member)
         except Exception as e:

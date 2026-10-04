@@ -16,6 +16,25 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _enable_org_sso_for_tests():
+    """Org-level SSO is unavailable in LibreSeal (upstream adapters are
+    Enterprise-licensed), but the MIT orchestration code is kept for a future
+    clean-room adapter. Enable the feature flag here so that code stays tested;
+    ``tests/test_libreseal_org_sso_unavailable.py`` covers the default."""
+    from backend import edition
+
+    with patch.object(
+        edition,
+        "ENABLED_FEATURES",
+        edition.ENABLED_FEATURES | {edition.Feature.ENTERPRISE_SSO},
+    ):
+        yield
+
+
 def _add_session_to_request(request):
     middleware = SessionMiddleware(lambda req: None)
     middleware.process_request(request)

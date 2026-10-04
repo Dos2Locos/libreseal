@@ -190,23 +190,9 @@ def _build_provider_registry():
             "token_auth_method": "client_secret_post",
         }
 
-    # GitHub Enterprise
-    ghe_cfg = providers.get("github-enterprise", {}).get("APP", {})
-    ghe_url = providers.get("github-enterprise", {}).get(
-        "GITHUB_URL", os.getenv("GITHUB_ENTERPRISE_BASE_URL", "")
-    )
-    if ghe_cfg.get("client_id") and ghe_url:
-        SSO_PROVIDER_REGISTRY["github-enterprise"] = {
-            "client_id": ghe_cfg["client_id"],
-            "client_secret": ghe_cfg.get("secret", ""),
-            "authorize_url": f"{ghe_url}/login/oauth/authorize",
-            "token_url": f"{ghe_url}/login/oauth/access_token",
-            "scopes": "user:email read:user",
-            "adapter_module": "ee.authentication.sso.oauth.github_enterprise.views",
-            "adapter_class": "GitHubEnterpriseOAuth2Adapter",
-            "provider_id": "github-enterprise",
-            "token_auth_method": "client_secret_post",
-        }
+    # GitHub Enterprise, Google OIDC, JumpCloud, Entra ID and Okta adapters
+    # are only available upstream under the Phase Enterprise License and are
+    # not part of LibreSeal.
 
     # GitLab OAuth2
     gitlab_cfg = providers.get("gitlab", {}).get("APP", {})
@@ -228,28 +214,6 @@ def _build_provider_registry():
 
     # OIDC providers
     oidc_providers = {
-        "google-oidc": {
-            "issuer": "https://accounts.google.com",
-            "adapter_module": "ee.authentication.sso.oidc.util.google.views",
-            "adapter_class": "GoogleOpenIDConnectAdapter",
-            "provider_id": "google-oidc",
-            "token_auth_method": "client_secret_post",
-        },
-        "jumpcloud-oidc": {
-            "issuer": "https://oauth.id.jumpcloud.com",
-            "adapter_module": "ee.authentication.sso.oidc.util.jumpcloud.views",
-            "adapter_class": "JumpCloudOpenIDConnectAdapter",
-            "provider_id": "jumpcloud-oidc",
-            "token_auth_method": "client_secret_post",
-        },
-        "entra-id-oidc": {
-            "issuer": f"https://login.microsoftonline.com/{os.getenv('ENTRA_ID_OIDC_TENANT_ID', 'common')}/v2.0",
-            "adapter_module": "ee.authentication.sso.oidc.entraid.views",
-            "adapter_class": "CustomMicrosoftGraphOAuth2Adapter",
-            "provider_id": "microsoft",
-            "token_auth_method": "client_secret_post",
-            "extra_scopes": ["User.Read"],
-        },
         "authentik": {
             "issuer": f"{os.getenv('AUTHENTIK_URL', '')}/application/o/{os.getenv('AUTHENTIK_APP_SLUG', '')}",
             "adapter_module": "api.authentication.providers.authentik.views",
@@ -264,25 +228,10 @@ def _build_provider_registry():
             "provider_id": "authelia",
             "token_auth_method": "client_secret_post",
         },
-        "okta-oidc": {
-            "issuer": os.getenv("OKTA_OIDC_ISSUER", ""),
-            "adapter_module": "ee.authentication.sso.oidc.okta.views",
-            "adapter_class": "OktaOpenIDConnectAdapter",
-            "provider_id": "okta-oidc",
-            "token_auth_method": "client_secret_basic",
-        },
     }
 
     for slug, oidc_cfg in oidc_providers.items():
-        settings_key_map = {
-            "google-oidc": "google-oidc",
-            "jumpcloud-oidc": "jumpcloud-oidc",
-            "entra-id-oidc": "microsoft",
-            "authentik": "authentik",
-            "authelia": "authelia",
-            "okta-oidc": "okta-oidc",
-        }
-        settings_key = settings_key_map.get(slug, slug)
+        settings_key = slug
         provider_settings = providers.get(settings_key, {})
 
         app_cfg = provider_settings.get("APP", {})

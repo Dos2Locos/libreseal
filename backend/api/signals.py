@@ -3,7 +3,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.conf import settings
 from backend.api.notifier import notify_slack
-from api.models import RotatingSecret, RotatingSecretCredential
+from api.models import RotatingSecret
 
 CLOUD_HOSTED = settings.APP_HOST == "cloud"
 
@@ -31,22 +31,10 @@ def notify_new_user_signup(request, user, **kwargs):
 @receiver(pre_delete, sender=RotatingSecret)
 def _rotating_secret_pre_delete(sender, instance, **kwargs):
     # Cascade hard-deletes from Environment/App/Folder bypass the soft-delete
-    # RotatingSecret.delete(). Without this, provider credentials stay live
-    # and scheduled jobs keep firing against a gone row.
-    from ee.integrations.secrets.rotation.engine import (
-        cancel_rotation_jobs,
-        revoke_credential,
-    )
+    # RotatingSecret.delete(). Secret rotation is not available in LibreSeal,
+    # so live provider credentials (only possible in a database migrated from
+    # Phase) cannot be revoked: abort the cascade instead of orphaning them.
+    if instance.has_live_credentials():
+        from backend.edition import Feature, FeatureUnavailable
 
-    cancel_rotation_jobs(instance)
-    for cred in instance.credentials.filter(
-        status__in=[
-            RotatingSecretCredential.ACTIVE,
-            RotatingSecretCredential.EXPIRING,
-            RotatingSecretCredential.REVOKING,
-        ]
-    ):
-        try:
-            revoke_credential(cred.id, immediate=True)
-        except Exception:
-            pass
+        raise FeatureUnavailable(Feature.SECRET_ROTATION)

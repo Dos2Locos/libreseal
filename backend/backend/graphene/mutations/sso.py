@@ -20,21 +20,19 @@ import graphene
 import logging
 from graphql import GraphQLError
 
+from backend.edition import Feature, feature_enabled, unavailable_message
+
 logger = logging.getLogger(__name__)
 
 CLOUD_HOSTED = settings.APP_HOST == "cloud"
 
 
 def _check_sso_entitlement(org):
-    """Verify the org is entitled to use SSO.
-
-    Cloud: org must be on the Enterprise plan.
-    Self-hosted: requires an active ActivatedPhaseLicense (checked at adapter level).
-    """
-    if CLOUD_HOSTED and org.plan != Organisation.ENTERPRISE_PLAN:
-        raise GraphQLError(
-            "SSO is available on the Enterprise plan. Please upgrade to configure SSO."
-        )
+    """Org-level SSO is not available in LibreSeal (upstream adapters are
+    Enterprise-licensed). Configuration is refused so no admin is led to
+    believe SSO enforcement is active."""
+    if not feature_enabled(Feature.ENTERPRISE_SSO):
+        raise GraphQLError(unavailable_message(Feature.ENTERPRISE_SSO))
 
 
 def _check_oidc_discovery(provider_type, config):

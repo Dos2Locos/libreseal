@@ -110,51 +110,16 @@ class TestAccountDeletionBlockers:
 
 
 class TestRevokeLeaseNow:
-    def _lease(self, provider="aws"):
+    """LibreSeal cannot revoke dynamic secret leases at the provider, so an
+    active (migrated) lease must block account deletion instead of being
+    silently dropped."""
+
+    def test_active_lease_fails_closed(self):
+        from backend.graphene.mutations.account import revoke_lease_now
+
         lease = MagicMock()
-        lease.id = "lease-1"
-        lease.secret.provider = provider
-        lease.cleanup_job_id = "job-1"
-        return lease
-
-    @patch("django_rq.get_scheduler")
-    @patch("ee.integrations.secrets.dynamic.aws.utils.revoke_aws_dynamic_secret_lease")
-    def test_revokes_synchronously_and_cancels_job(self, mock_revoke, mock_scheduler):
-        from backend.graphene.mutations.account import revoke_lease_now
-
-        lease = self._lease()
-        revoke_lease_now(lease)
-
-        mock_revoke.assert_called_once_with("lease-1", manual=True)
-        mock_scheduler.return_value.cancel.assert_called_once_with("job-1")
-
-    @patch("django_rq.get_scheduler")
-    @patch("ee.integrations.secrets.dynamic.aws.utils.revoke_aws_dynamic_secret_lease")
-    def test_already_revoked_is_idempotent(self, mock_revoke, mock_scheduler):
-        from backend.graphene.mutations.account import revoke_lease_now
-        from ee.integrations.secrets.dynamic.exceptions import LeaseAlreadyRevokedError
-
-        mock_revoke.side_effect = LeaseAlreadyRevokedError("already revoked")
-        revoke_lease_now(self._lease())  # must not raise
-        mock_scheduler.return_value.cancel.assert_called_once()
-
-    @patch("django_rq.get_scheduler")
-    @patch("ee.integrations.secrets.dynamic.aws.utils.revoke_aws_dynamic_secret_lease")
-    def test_provider_failure_raises_graphql_error(self, mock_revoke, mock_scheduler):
-        from backend.graphene.mutations.account import revoke_lease_now
-
-        mock_revoke.side_effect = RuntimeError("aws down")
-        with pytest.raises(GraphQLError):
-            revoke_lease_now(self._lease())
-
-    @patch("django_rq.get_scheduler")
-    @patch("ee.integrations.secrets.dynamic.aws.utils.revoke_aws_dynamic_secret_lease")
-    def test_unknown_provider_is_skipped(self, mock_revoke, mock_scheduler):
-        from backend.graphene.mutations.account import revoke_lease_now
-
-        revoke_lease_now(self._lease(provider="gcp"))
-        mock_revoke.assert_not_called()
-        mock_scheduler.return_value.cancel.assert_not_called()
+        with pytest.raises(GraphQLError, match="cannot revoke"):
+            revoke_lease_now(lease)
 
 
 # ---------------------------------------------------------------------------
@@ -303,12 +268,8 @@ class TestDeleteAccountMutation:
         user.delete.assert_not_called()
 
     @patch("api.emails.send_account_deleted_email")
-    @patch("ee.billing.stripe.update_stripe_subscription_seats")
-    @patch("backend.graphene.mutations.account.settings")
     def test_happy_path_executes_in_order(
         self,
-        mock_settings,
-        mock_seats,
         mock_email,
         mock_blockers,
         mock_fresh,
@@ -323,7 +284,6 @@ class TestDeleteAccountMutation:
         mock_meta,
         mock_logout,
     ):
-        mock_settings.APP_HOST = "cloud"
         # Execute on_commit callbacks immediately
         mock_transaction.on_commit.side_effect = lambda cb: cb()
 
@@ -367,41 +327,8 @@ class TestDeleteAccountMutation:
             user_agent="UA",
         )
         user.delete.assert_called_once()
-        mock_seats.assert_called_once_with(membership.organisation)
         mock_email.assert_called_once_with("alice@example.com", "Alice Test")
         mock_logout.assert_called_once()
-
-    @patch("api.emails.send_account_deleted_email")
-    @patch("ee.billing.stripe.update_stripe_subscription_seats")
-    @patch("backend.graphene.mutations.account.settings")
-    def test_self_hosted_skips_stripe(
-        self,
-        mock_settings,
-        mock_seats,
-        mock_email,
-        mock_blockers,
-        mock_fresh,
-        mock_transaction,
-        mock_revoke,
-        mock_lease_model,
-        mock_om,
-        mock_st,
-        mock_sat,
-        mock_nap,
-        mock_audit,
-        mock_meta,
-        mock_logout,
-    ):
-        mock_settings.APP_HOST = "self"
-        mock_transaction.on_commit.side_effect = lambda cb: cb()
-        self._setup(mock_blockers, mock_lease_model, mock_om)
-        user = _make_user()
-
-        result = self._mutate(_make_info(user))
-
-        assert result.ok is True
-        mock_seats.assert_not_called()
-        mock_email.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

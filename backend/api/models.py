@@ -220,7 +220,7 @@ class AppManager(models.Manager):
     def create(self, *args, **kwargs):
         organisation = kwargs.get("organisation")
         if not can_add_app(organisation):
-            raise ValueError("Cannot add more apps to this organisation's plan.")
+            raise ValueError("Cannot add more apps to this organisation.")
         return super().create(*args, **kwargs)
 
 
@@ -390,7 +390,7 @@ class ServiceAccountManager(models.Manager):
     def create(self, *args, **kwargs):
         organisation = kwargs.get("organisation")
         if not can_add_account(organisation, account_type="service_account"):
-            raise ValueError("Cannot add more accounts to this organisation's plan.")
+            raise ValueError("Cannot add more accounts to this organisation.")
         return super().create(*args, **kwargs)
 
 
@@ -468,7 +468,7 @@ class OrganisationMemberInviteManager(models.Manager):
     def create(self, *args, **kwargs):
         organisation = kwargs.get("organisation")
         if not can_add_account(organisation):
-            raise ValueError("Cannot add more users to this organisation's plan.")
+            raise ValueError("Cannot add more users to this organisation.")
         return super().create(*args, **kwargs)
 
 
@@ -928,16 +928,18 @@ class DynamicSecret(models.Model):
             self.environment.save()
 
     def delete(self, *args, **kwargs):
+        # Dynamic secrets are not available in LibreSeal: active leases (only
+        # possible in a database migrated from Phase) cannot be revoked at
+        # the provider, so refuse rather than orphan live credentials.
+        if self.leases.filter(status=DynamicSecretLease.ACTIVE).exists():
+            from backend.edition import Feature, FeatureUnavailable
+
+            raise FeatureUnavailable(Feature.DYNAMIC_SECRETS)
+
         # Soft delete the object by setting the 'deleted_at' field.
         self.updated_at = timezone.now()
         self.deleted_at = timezone.now()
         self.save()
-
-        # Revoke all active leases
-        from ee.integrations.secrets.dynamic.utils import schedule_lease_revocation
-
-        for lease in self.leases.filter(status=DynamicSecretLease.ACTIVE):
-            schedule_lease_revocation(lease, True)
 
         # Update the 'updated_at' timestamp of the associated Environment
         env = self.environment
@@ -1121,25 +1123,27 @@ class RotatingSecret(models.Model):
             self.environment.updated_at = timezone.now()
             self.environment.save()
 
-    def delete(self, *args, **kwargs):
-        from ee.integrations.secrets.rotation.engine import (
-            cancel_rotation_jobs,
-            revoke_credential,
-        )
-
-        self.updated_at = timezone.now()
-        self.deleted_at = timezone.now()
-        self.save()
-
-        cancel_rotation_jobs(self)
-        for cred in self.credentials.filter(
+    def has_live_credentials(self):
+        return self.credentials.filter(
             status__in=[
                 RotatingSecretCredential.ACTIVE,
                 RotatingSecretCredential.EXPIRING,
                 RotatingSecretCredential.REVOKING,
             ]
-        ):
-            revoke_credential(cred.id, immediate=True)
+        ).exists()
+
+    def delete(self, *args, **kwargs):
+        # Secret rotation is not available in LibreSeal: live provider
+        # credentials (only possible in a database migrated from Phase) cannot
+        # be revoked, so refuse rather than orphan them.
+        if self.has_live_credentials():
+            from backend.edition import Feature, FeatureUnavailable
+
+            raise FeatureUnavailable(Feature.SECRET_ROTATION)
+
+        self.updated_at = timezone.now()
+        self.deleted_at = timezone.now()
+        self.save()
 
         # Soft-delete the materialised Secret rows so they disappear from
         # the env. Hard-delete would also work since the FK is CASCADE, but
@@ -1826,8 +1830,8 @@ class LogStream(models.Model):
     deleted_at = models.DateTimeField(blank=True, null=True)
 
     def delete(self, *args, **kwargs):
-        from ee.integrations.logs.streams.engine import cancel_ship_job
-
+        # Log streams are not available in LibreSeal, so no shipping jobs are
+        # ever scheduled and there is nothing to cancel.
         self.is_active = False
         self.updated_at = timezone.now()
         self.deleted_at = timezone.now()
@@ -1843,8 +1847,6 @@ class LogStream(models.Model):
             ],
             resolved_at__isnull=True,
         ).update(resolved_at=timezone.now())
-
-        cancel_ship_job(self)
 
 
 class LogStreamDeliveryEvent(models.Model):
