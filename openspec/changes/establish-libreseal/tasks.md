@@ -13,10 +13,10 @@
 
 ## 2. Frontend sin `ee/`, comercio ni telemetría
 
-- [ ] 2.1 Añadir el campo GraphQL aditivo `libresealFeatures` (D3) con test de backend; regenerar tipos del frontend (`yarn codegen` o el script del repo) y verificar que compila
-- [ ] 2.2 Crear `useFeature` y `UnavailableFeature`; sustituir todas las comprobaciones `organisation.plan`, `UpsellDialog`, `UpgradeRequestForm` y `PlanLabel` (lista en `audit.md` §3); verificar con `grep -rnE "UpsellDialog|UpgradeRequestForm|PlanLabel|ApiOrganisationPlanChoices" frontend/{app,components}` vacío o solo en tipos generados
-- [ ] 2.3 Retirar los consumidores de `@/ee/*` (página de entorno, integraciones de dynamic secrets y log streams, onboarding, `PlanInfo`) y `git rm -r frontend/ee`; verificar `tsc --noEmit` y `yarn build`
-- [ ] 2.4 Eliminar PostHog, Stripe, `StatusIndicator` de Phase y la consulta de releases a GitHub (D6), y sus variables `NEXT_PUBLIC_*` del Dockerfile/scripts; verificar con `grep -rniE "posthog|stripe|statuspage|api.github.com" frontend --exclude-dir=node_modules` sin coincidencias funcionales y `yarn test` verde
+- [x] 2.1 Añadir el campo GraphQL aditivo `libresealFeatures` (D3) con test de backend; regenerar tipos del frontend (`yarn codegen` o el script del repo) y verificar que compila
+- [x] 2.2 Crear `useFeature` y `UnavailableFeature`; sustituir todas las comprobaciones `organisation.plan`, `UpsellDialog`, `UpgradeRequestForm` y `PlanLabel` (lista en `audit.md` §3); verificar con `grep -rnE "UpsellDialog|UpgradeRequestForm|PlanLabel|ApiOrganisationPlanChoices" frontend/{app,components}` vacío o solo en tipos generados
+- [x] 2.3 Retirar los consumidores de `@/ee/*` (página de entorno, integraciones de dynamic secrets y log streams, onboarding, `PlanInfo`) y `git rm -r frontend/ee`; verificar `tsc --noEmit` y `yarn build`
+- [x] 2.4 Eliminar PostHog, Stripe, `StatusIndicator` de Phase y la consulta de releases a GitHub (D6), y sus variables `NEXT_PUBLIC_*` del Dockerfile/scripts; verificar con `grep -rniE "posthog|stripe|statuspage|api.github.com" frontend --exclude-dir=node_modules` sin coincidencias funcionales y `yarn test` verde
 
 ## 3. Identidad LibreSeal
 
