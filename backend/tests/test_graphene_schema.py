@@ -25,3 +25,42 @@ def test_create_environment_key_mutation_is_not_exposed():
     mutation_fields = schema.graphql_schema.mutation_type.fields
 
     assert "createEnvironmentKey" not in mutation_fields
+
+
+def test_libreseal_features_query_lists_enabled_features():
+    from unittest.mock import MagicMock
+
+    result = schema.execute(
+        "{ libresealFeatures }", context_value=MagicMock()
+    )
+    assert result.errors is None
+    assert result.data["libresealFeatures"] == [
+        "custom_environments",
+        "custom_roles",
+        "service_accounts",
+        "teams",
+    ]
+
+
+def test_enterprise_only_fields_are_not_exposed():
+    query_fields = schema.graphql_schema.query_type.fields
+    mutation_fields = schema.graphql_schema.mutation_type.fields
+
+    for name in (
+        "dynamicSecrets",
+        "rotatingSecrets",
+        "logStreams",
+        "scimTokens",
+        "license",
+        "organisationLicense",
+        "stripeCheckoutDetails",
+    ):
+        assert name not in query_fields
+    for name in (
+        "createAwsDynamicSecret",
+        "createRotatingSecret",
+        "createLogStream",
+        "createScimToken",
+        "createSubscriptionCheckoutSession",
+    ):
+        assert name not in mutation_fields

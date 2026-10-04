@@ -97,6 +97,7 @@ from .graphene.queries.service_accounts import (
     resolve_app_service_accounts,
 )
 from .graphene.queries.quotas import resolve_organisation_plan
+from backend.edition import enabled_features
 from .graphene.queries.auth import resolve_verify_password
 from .graphene.queries.teams import resolve_teams
 
@@ -292,6 +293,11 @@ class Query(graphene.ObjectType):
     )
 
     organisation_name_available = graphene.Boolean(name=graphene.String())
+
+    # Features available in this LibreSeal edition (see backend/edition.py)
+    libreseal_features = graphene.NonNull(
+        graphene.List(graphene.NonNull(graphene.String))
+    )
 
     account_deletion_readiness = graphene.Field(AccountDeletionReadinessType)
 
@@ -575,6 +581,9 @@ class Query(graphene.ObjectType):
     resolve_teams = resolve_teams
 
     resolve_organisation_plan = resolve_organisation_plan
+
+    def resolve_libreseal_features(root, info):
+        return enabled_features()
 
     def resolve_organisation_name_available(root, info, name):
         return not Organisation.objects.filter(name__iexact=name).exists()
