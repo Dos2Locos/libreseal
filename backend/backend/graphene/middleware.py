@@ -2,17 +2,19 @@ from graphql import GraphQLResolveInfo
 from graphql import GraphQLError
 from graphql.type import GraphQLList, GraphQLNonNull, GraphQLObjectType
 from api.models import (
-    NetworkAccessPolicy,
     Organisation,
     OrganisationMember,
     OrganisationMemberInvite,
 )
 
-from itertools import chain
 from django.core.cache import cache
 from django.utils import timezone
 
 from api.utils.access.ip import get_client_ip
+from api.utils.access.network_policies import (
+    UNENFORCEABLE_MESSAGE,
+    network_access_denied,
+)
 from api.utils.access.org_resolution import resolve_org_id, resolve_via_model
 
 
@@ -62,6 +64,17 @@ def _model_for_mutation(info: GraphQLResolveInfo):
         if model is not None:
             return model.__name__
     return None
+
+
+class NetworkPolicyUnenforceableError(GraphQLError):
+    def __init__(self, organisation_name: str):
+        super().__init__(
+            message=UNENFORCEABLE_MESSAGE,
+            extensions={
+                "code": "IP_RESTRICTED",
+                "organisation_name": organisation_name,
+            },
+        )
 
 
 class IPRestrictedError(GraphQLError):
@@ -424,38 +437,17 @@ class IPWhitelistMiddleware:
 
         org = Organisation.objects.get(id=organisation_id)
 
-        if org.plan == Organisation.FREE_PLAN:
-            return next(root, info, **kwargs)
+        org_member = OrganisationMember.objects.filter(
+            organisation_id=organisation_id,
+            user_id=user.userId,
+            deleted_at__isnull=True,
+        ).first()
 
-        else:
-            from ee.access.utils.network import is_ip_allowed
+        # Non-members are rejected by the resolvers' own permission checks.
+        if network_access_denied(org, org_member):
+            raise NetworkPolicyUnenforceableError(org.name)
 
-            try:
-                org_member = OrganisationMember.objects.get(
-                    organisation_id=organisation_id,
-                    user_id=user.userId,
-                    deleted_at__isnull=True,
-                )
-            except OrganisationMember.DoesNotExist:
-                raise GraphQLError("You are not a member of this organisation")
-
-            ip = get_client_ip(request)
-
-            account_policies = org_member.network_policies.all()
-            global_policies = (
-                NetworkAccessPolicy.objects.filter(
-                    organisation_id=organisation_id, is_global=True
-                )
-                if org.plan == Organisation.ENTERPRISE_PLAN
-                else []
-            )
-
-            all_policies = list(chain(account_policies, global_policies))
-
-            if not all_policies or is_ip_allowed(ip, all_policies):
-                return next(root, info, **kwargs)
-
-            raise IPRestrictedError(org_member.organisation.name)
+        return next(root, info, **kwargs)
 
     def get_client_ip(self, request):
         return get_client_ip(request)

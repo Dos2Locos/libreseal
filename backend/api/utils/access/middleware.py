@@ -1,57 +1,26 @@
 # permissions.py
 
-from api.models import NetworkAccessPolicy, Organisation
-from api.utils.access.ip import get_client_ip
+from api.utils.access.network_policies import (
+    UNENFORCEABLE_MESSAGE,
+    network_access_denied,
+)
 from rest_framework.permissions import BasePermission
-from itertools import chain
 
 
 class IsIPAllowed(BasePermission):
     """
-    Checks if the client's IP is allowed based on attached network access policies.
+    Denies access when network access policies apply to the caller, since
+    LibreSeal cannot enforce them (fail closed). Accounts without policies
+    are governed by RBAC alone.
     """
 
-    message = (
-        "Access denied: a network access policy restricts access from your IP address."
-    )
-
-    def get_client_ip(self, request):
-        return get_client_ip(request)
+    message = UNENFORCEABLE_MESSAGE
 
     def has_permission(self, request, view):
-        ip = self.get_client_ip(request)
-
         org_member = request.auth.get("org_member", None)
         service_account = request.auth.get("service_account", None)
 
-        org = None
-        account_policies = NetworkAccessPolicy.objects.none()
+        account = org_member or service_account
+        org = account.organisation if account is not None else None
 
-        if org_member:
-            account_policies = org_member.network_policies.all()
-            org = org_member.organisation
-        elif service_account:
-            account_policies = service_account.network_policies.all()
-            org = service_account.organisation
-
-        if org is None or org.plan == Organisation.FREE_PLAN:
-            return True
-        else:
-            from ee.access.utils.network import is_ip_allowed
-
-            global_policies = (
-                (
-                    NetworkAccessPolicy.objects.filter(organisation=org, is_global=True)
-                    if org
-                    else NetworkAccessPolicy.objects.none()
-                )
-                if org.plan == Organisation.ENTERPRISE_PLAN
-                else []
-            )
-
-            all_policies = list(chain(account_policies, global_policies))
-
-            if not all_policies:
-                return True  # Allow if no policies defined
-
-            return is_ip_allowed(ip, all_policies)
+        return not network_access_denied(org, account)
