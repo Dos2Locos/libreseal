@@ -20,15 +20,15 @@
 
 ## 3. Identidad LibreSeal
 
-- [ ] 3.1 Diseñar logotipo, wordmark y favicon propios en SVG/ICO en `frontend/public` y componentes de logo; documentar su origen y licencia en `frontend/public/brand/README.md`; verificar visualmente en `/login`
-- [ ] 3.2 Cambiar textos visibles, títulos (`formatTitle`), metadatos y enlaces de documentación a LibreSeal y añadir el aviso de no afiliación en login; verificar con captura de `/login` y `grep -rn "docs.phase.dev" frontend/{app,components}` vacío
+- [x] 3.1 Diseñar logotipo, wordmark y favicon propios en SVG/ICO en `frontend/public` y componentes de logo; documentar su origen y licencia en `frontend/public/brand/README.md`; verificar visualmente en `/login`
+- [x] 3.2 Cambiar textos visibles, títulos (`formatTitle`), metadatos y enlaces de documentación a LibreSeal y añadir el aviso de no afiliación en login; verificar con captura de `/login` y `grep -rn "docs.phase.dev" frontend/{app,components}` vacío
 - [x] 3.3 Añadir `NOTICE` con atribución a Phase/Phi Security Inc. y licencias por componente, conservando `LICENSE`; verificar presencia y contenido
 
 ## 4. Despliegue autoalojado reproducible
 
 - [x] 4.1 Reescribir `docker-compose.yml` para construir desde fuente con nombres `libreseal-*` (D7) y actualizar `.env.example` sin secretos fijos; verificar con `docker compose config`
 - [x] 4.2 Crear `scripts/libreseal-init.sh` (genera `.env`, no sobrescribe) con test de shell (dos ejecuciones → secretos distintos; segunda ejecución sobre `.env` existente → sin cambios)
-- [ ] 4.3 Crear `scripts/libreseal-backup.sh` y `scripts/libreseal-restore.sh`; verificar con un ciclo copia → borrado de volumen → restauración en la validación 7.6
+- [x] 4.3 Crear `scripts/libreseal-backup.sh` y `scripts/libreseal-restore.sh`; verificar con un ciclo copia → borrado de volumen → restauración en la validación 7.6
 - [x] 4.4 Añadir comprobación de CI (workflow de GitHub Actions) que falle si reaparece `ee/` o dependencias `posthog-js`/`@stripe/*`; verificar ejecutando el script localmente
 
 ## 5. [cli] libreseal-cli
@@ -44,14 +44,14 @@
 
 - [ ] 6.1 [skills] Adaptar `docker-compose/` a LibreSeal (repo, scripts, verificación); verificar con `grep` de referencias a Phase Cloud vacío y recorrido real en la validación 7.9
 - [ ] 6.2 [skills] Crear `libreseal-usage/` (SKILL.md + `examples/agent-demo.sh`) siguiendo el spec `agent-skills`; verificar con `shellcheck` si está disponible y ejecución en 7.9
-- [ ] 6.3 [skills] README con instalación (`npx skills add Dos2Locos/libreseal-skills` y copia manual), estado de k8s/eks/aks, licencia MIT y atribución
+- [x] 6.3 [skills] README con instalación (`npx skills add Dos2Locos/libreseal-skills` y copia manual), estado de k8s/eks/aks, licencia MIT y atribución
 
 ## 7. Validación integrada (instancia local)
 
-- [ ] 7.1 Instalación limpia en un clon nuevo: `libreseal-init.sh` + `docker compose up -d --build`; registrar estado de servicios y `curl -k https://localhost/` en `validation.md`
-- [ ] 7.2 Registro de usuario con contraseña y creación de organización; CRUD de un secreto sintético en la UI con navegador automatizado; registrar capturas/resultados
-- [ ] 7.3 Crear cuenta de servicio limitada a `demo/Development` (lectura y escritura) y otra de solo lectura; probar API: lectura 200, escritura 200/201, `Production` 403, escritura con solo lectura 403, token eliminado 401/403
-- [ ] 7.4 Verificar sin cuotas: cuarto entorno personalizado, rol personalizado, equipo, 6 cuentas de servicio; y funciones no disponibles (UI y `GET /service/public/v1/secrets/dynamic/` → 404)
+- [x] 7.1 Instalación limpia en un clon nuevo: `libreseal-init.sh` + `docker compose up -d --build`; registrar estado de servicios y `curl -k https://localhost/` en `validation.md`
+- [x] 7.2 Registro de usuario con contraseña y creación de organización; CRUD de un secreto sintético en la UI con navegador automatizado; registrar capturas/resultados
+- [x] 7.3 Crear cuenta de servicio limitada a `demo/Development` (lectura y escritura) y otra de solo lectura; probar API: lectura 200, escritura 200/201, `Production` 403, escritura con solo lectura 403, token eliminado 401/403
+- [x] 7.4 Verificar sin cuotas: cuarto entorno personalizado, rol personalizado, equipo, 6 cuentas de servicio; y funciones no disponibles (UI y `GET /service/public/v1/secrets/dynamic/` → 404)
 - [ ] 7.5 Persistencia: `docker compose down && docker compose up -d` y relectura del secreto por API y CLI
 - [ ] 7.6 Copia y restauración: backup → `docker compose down -v` → up → restore → relectura por CLI
 - [ ] 7.7 CLI contra la instancia: `auth --mode token`, `apps list`, `init`, `secrets create/list/get/update/delete`, `import/export`, `run` comprobando el valor sin imprimirlo; capturar la salida y verificar que el valor sintético no aparece (`grep -c`)
