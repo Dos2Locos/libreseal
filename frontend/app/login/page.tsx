@@ -5,13 +5,14 @@ import { formatTitle } from '@/utils/meta'
 import { Metadata } from 'next'
 import { FaSun, FaMoon } from 'react-icons/fa6'
 import { InstanceInfo } from '@/components/InstanceInfo'
+import { ForkNotice } from '@/components/common/ForkNotice'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: formatTitle(`Log in`),
-    description: `Log in to Phase`,
+    description: `Log in to LibreSeal`,
   }
 }
 
@@ -49,8 +50,8 @@ export default async function Login() {
           passwordAuthEnabled={passwordAuthEnabled}
         />
 
-        <div className="absolute bottom-4 px-4 md:px-8 md:bottom-8 w-full flex justify-between">
-          <div className="text-neutral-500 text-sm font-medium">Phi Security Inc.</div>
+        <div className="absolute bottom-4 px-4 md:px-8 md:bottom-8 w-full flex items-end justify-between gap-4">
+          <ForkNotice />
           <VersionLabel />
         </div>
       </div>

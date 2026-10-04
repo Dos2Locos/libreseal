@@ -131,7 +131,7 @@ export const UpdateProviderCredentials = (props: { credential: ProviderCredentia
           onChange={(region) => handleCredentialChange('region', region)}
         />
       )}
-      {/* Google Cloud: only the provider name is editable; Phase minted the rest */}
+      {/* Google Cloud: only the provider name is editable; LibreSeal minted the rest */}
       {credential.provider?.id === 'gcp' && credential.credentials && (
         <>
           <Input

@@ -114,23 +114,23 @@ export const CreateProviderCredentials = (props: {
 
   const docsLink = (provider: ProviderType) => {
     if (provider.id === 'cloudflare')
-      return 'https://docs.phase.dev/integrations/platforms/cloudflare-pages'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'aws' || provider.id === 'aws_assume_role')
-      return 'https://docs.phase.dev/integrations/platforms/aws-secrets-manager'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'hashicorp_vault')
-      return 'https://docs.phase.dev/integrations/platforms/hashicorp-vault'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'hashicorp_nomad')
-      return 'https://docs.phase.dev/integrations/platforms/hashicorp-nomad'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'github')
-      return 'https://docs.phase.dev/integrations/platforms/github-actions'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'gitlab')
-      return 'https://docs.phase.dev/integrations/platforms/gitlab-ci'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'railway')
-      return 'https://docs.phase.dev/integrations/platforms/railway'
-    else if (provider.id === 'vercel') return 'https://docs.phase.dev/integrations/platforms/vercel'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
+    else if (provider.id === 'vercel') return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'gcp')
-      return 'https://docs.phase.dev/integrations/platforms/gcp-secret-manager'
-    else return 'https://docs.phase.dev/integrations'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
+    else return 'https://github.com/Dos2Locos/libreseal#readme'
   }
 
   const handleClickBack = () => {

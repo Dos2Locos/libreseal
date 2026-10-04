@@ -44,7 +44,7 @@ export const GCPScriptBlock = (props: { script: string }) => {
   )
 }
 
-/** Shell scripts in tabs, one per Phase integration that uses the Google
+/** Shell scripts in tabs, one per LibreSeal integration that uses the Google
  * Cloud credential (see GCP_INTEGRATIONS). */
 export const GCPScriptTabs = (props: { tabs: GCPScriptTab[]; placeholder?: ReactNode }) => (
   <Tab.Group>

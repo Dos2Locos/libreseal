@@ -232,7 +232,7 @@ export default function Invite(props: { params: Promise<{ invite: string }> }) {
           <LogoMark className="w-24 fill-black dark:fill-white" />
         </div>
 
-        <h1 className="font-bold text-2xl">Welcome to Phase</h1>
+        <h1 className="font-bold text-2xl">Welcome to LibreSeal</h1>
         <p className="text-lg text-neutral-500">
           You have been invited by{' '}
           <span className="font-medium text-neutral-800 dark:text-neutral-200">

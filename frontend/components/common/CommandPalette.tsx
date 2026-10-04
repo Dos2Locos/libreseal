@@ -216,23 +216,23 @@ const CommandPalette: React.FC = () => {
     {
       id: 'open-docs',
       name: 'Open Docs',
-      description: 'View the Phase documentation',
+      description: 'View the LibreSeal documentation',
       icon: <FaBook />,
-      action: () => window.open('https://docs.phase.dev', '_blank'),
+      action: () => window.open('https://github.com/Dos2Locos/libreseal#readme', '_blank'),
     },
     {
       id: 'open-github',
-      name: 'View Phase on GitHub',
-      description: 'View the Phase repository on GitHub',
+      name: 'View LibreSeal on GitHub',
+      description: 'View the LibreSeal repository on GitHub',
       icon: <FaGithub />,
-      action: () => window.open('https://github.com/phasehq/console', '_blank'),
+      action: () => window.open('https://github.com/Dos2Locos/libreseal', '_blank'),
     },
     {
       id: 'open-changelog',
       name: 'Read the changelog',
-      description: 'View the latest features and updates to Phase',
+      description: 'View the latest features and updates to LibreSeal',
       icon: <FaCodeMerge />,
-      action: () => window.open('https://phase.dev/changelog', '_blank'),
+      action: () => window.open('https://github.com/Dos2Locos/libreseal/releases', '_blank'),
     },
   ]
 

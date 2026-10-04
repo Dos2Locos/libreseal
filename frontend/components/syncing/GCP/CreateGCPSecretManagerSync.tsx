@@ -179,11 +179,11 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
   const consentPoints =
     syncMode === 'individual'
       ? [
-          'Phase will overwrite GCP secrets with the same names and manage them from then on',
-          "Phase will disable the secrets it manages when they're deleted in Phase",
+          'LibreSeal will overwrite GCP secrets with the same names and manage them from then on',
+          "LibreSeal will disable the secrets it manages when they're deleted in LibreSeal",
           'Only the current and previous versions of each secret are kept',
         ]
-      : ['Phase will overwrite this GCP secret', 'Only its current and previous versions are kept']
+      : ['LibreSeal will overwrite this GCP secret', 'Only its current and previous versions are kept']
 
   return (
     <div className="space-y-6">
@@ -247,7 +247,7 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
             <div className="space-y-4">
               <RadioGroup value={phaseEnv} onChange={setPhaseEnv}>
                 <RadioGroup.Label as={Fragment}>
-                  <label className="block text-neutral-500 text-sm mb-2">Phase Environment</label>
+                  <label className="block text-neutral-500 text-sm mb-2">LibreSeal Environment</label>
                 </RadioGroup.Label>
                 <div className="flex flex-wrap items-center gap-2">
                   {appEnvsData.appEnvironments.map((env: EnvironmentType) => (
@@ -300,7 +300,7 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
               {syncMode === 'individual' && (
                 <div className="space-y-2">
                   <div className="text-sm text-neutral-500">
-                    Each Phase secret becomes its own GCP secret, named after its key.
+                    Each LibreSeal secret becomes its own GCP secret, named after its key.
                   </div>
                   <Input
                     value={prefix}
@@ -328,7 +328,7 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
               {syncMode === 'blob' && (
                 <div className="space-y-4">
                   <div className="text-sm text-neutral-500">
-                    All Phase secrets are synced as one JSON object to a single GCP secret.
+                    All LibreSeal secrets are synced as one JSON object to a single GCP secret.
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Choice selected={createNewSecret} onClick={() => setCreateNewSecret(true)}>
@@ -416,7 +416,7 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
                                             </div>
                                             {secret.managedByPhase && (
                                               <span className="text-2xs text-emerald-500">
-                                                Phase
+                                                LibreSeal
                                               </span>
                                             )}
                                           </div>
@@ -463,7 +463,7 @@ export const CreateGCPSecretManagerSync = (props: { appId: string; closeModal: (
                       </a>{' '}
                       or any terminal where gcloud can manage the key, before you create the sync.
                       Secret Manager encrypts through the project&apos;s service agent, so the agent
-                      needs access to the key; Phase doesn&apos;t. It&apos;s safe to run again.
+                      needs access to the key; LibreSeal doesn&apos;t. It&apos;s safe to run again.
                     </p>
                   </>
                 ) : (

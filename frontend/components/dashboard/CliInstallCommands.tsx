@@ -4,84 +4,41 @@ import CopyButton from 'components/common/CopyButton'
 import { Fragment } from 'react'
 
 export const CliInstallCommands = () => {
+  const fromSource =
+    'git clone https://github.com/Dos2Locos/libreseal-cli.git && cd libreseal-cli && ./scripts/install-from-source.sh'
   const platformScripts = [
     {
-      name: 'macOS',
-      rawScript: 'brew tap phasehq/cli && brew trust phasehq/cli && brew install phase',
+      name: 'From source (Linux / macOS)',
+      rawScript: fromSource,
       styledScript: (
         <div className="space-y-1">
           <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">brew</span> tap phasehq/cli &&{' '}
-            <span className="text-emerald-800 dark:text-emerald-300">brew</span> trust phasehq/cli
+            <span className="text-emerald-800 dark:text-emerald-300">git</span> clone
+            https://github.com/Dos2Locos/libreseal-cli.git
           </pre>
           <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">brew</span> install phase
+            <span className="text-emerald-800 dark:text-emerald-300">cd</span> libreseal-cli &&
+            ./scripts/install-from-source.sh
           </pre>
         </div>
       ),
     },
     {
-      name: 'Linux',
-      rawScript: 'curl -fsSL https://pkg.phase.dev/install.sh | sh',
-      styledScript: (
-        <pre>
-          <span className="text-emerald-800 dark:text-emerald-300">curl</span> -fsSL
-          https://pkg.phase.dev/install.sh | sh
-        </pre>
-      ),
-    },
-    {
-      name: 'Windows',
+      name: 'Go toolchain',
       rawScript:
-        'scoop bucket add phasehq https://github.com/phasehq/scoop-cli.git && scoop install phase',
+        'git clone https://github.com/Dos2Locos/libreseal-cli.git && cd libreseal-cli/src && go build -o libreseal . && sudo install libreseal /usr/local/bin/',
       styledScript: (
         <div className="space-y-1">
           <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">scoop</span> bucket add phasehq
-            https://github.com/phasehq/scoop-cli.git
+            <span className="text-emerald-800 dark:text-emerald-300">cd</span> libreseal-cli/src
+            && <span className="text-emerald-800 dark:text-emerald-300">go</span> build -o
+            libreseal .
           </pre>
           <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">scoop</span> install phase
+            <span className="text-emerald-800 dark:text-emerald-300">sudo</span> install libreseal
+            /usr/local/bin/
           </pre>
         </div>
-      ),
-    },
-    {
-      name: 'Alpine Linux',
-      rawScript: 'apk add --no-cache curl && curl -fsSL https://pkg.phase.dev/install.sh | sh',
-      styledScript: (
-        <div className="space-y-1">
-          <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">apk</span> add --no-cache curl
-          </pre>
-          <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">curl</span> -fsSL
-            https://pkg.phase.dev/install.sh | sh
-          </pre>
-        </div>
-      ),
-    },
-    {
-      name: 'NixOS',
-      rawScript: 'nix-channel --update && nix-shell -p phase-cli',
-      styledScript: (
-        <div className="space-y-1">
-          <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">nix-channel</span> --update
-          </pre>
-          <pre>
-            <span className="text-emerald-800 dark:text-emerald-300">nix-shell</span> -p phase-cli
-          </pre>
-        </div>
-      ),
-    },
-    {
-      name: 'Docker',
-      rawScript: 'docker run phasehq/cli',
-      styledScript: (
-        <pre>
-          <span className="text-emerald-800 dark:text-emerald-300">docker</span> run phasehq/cli
-        </pre>
       ),
     },
   ]

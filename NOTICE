@@ -1,0 +1,37 @@
+LibreSeal
+Copyright © 2026 The LibreSeal contributors
+
+LibreSeal is an independent community fork of Phase Console
+(https://github.com/phasehq/console). It is not affiliated with, sponsored by or
+endorsed by Phi Security Inc. or the Phase project. "Phase" is used only to
+identify the upstream project.
+
+This repository contains software developed by Phi Security Inc. and the Phase
+contributors, distributed under the MIT ("Expat") license reproduced in LICENSE:
+
+  Copyright © 2026 Phi Security Inc.
+
+Licensing by component
+----------------------
+
+* All code in this repository is available under the MIT license in LICENSE,
+  including LibreSeal modifications, unless stated otherwise below.
+* Upstream Phase Console ships additional code under the "Phase Console
+  Enterprise License" in directories named "ee/". That code is NOT part of
+  LibreSeal: it was removed from this tree and is not included in any image or
+  artifact built from it. Older commits inherited from the upstream history
+  still contain it; those revisions remain subject to the upstream Enterprise
+  License and must not be used in production without a Phase subscription.
+* LibreSeal brand assets (frontend/public/brand, favicons, social image and the
+  LogoMark/LogoWordMark components) are original artwork dedicated to the
+  public domain under CC0 1.0. See frontend/public/brand/README.md.
+* Third-party dependencies remain under their own licenses (see
+  backend/requirements.txt and frontend/package.json).
+
+Related repositories
+--------------------
+
+* libreseal-cli (https://github.com/Dos2Locos/libreseal-cli): fork of
+  phasehq/cli, GPL-3.0.
+* libreseal-skills (https://github.com/Dos2Locos/libreseal-skills): fork of
+  phasehq/ai, MIT.

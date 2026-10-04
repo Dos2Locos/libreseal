@@ -226,7 +226,7 @@ export default function KMSLogs(props: { app: string }) {
                     <span className="font-semibold">{log.id}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 w-full gap-4 text-sm">
-                    <LogField label="Phase SDK">
+                    <LogField label="SDK">
                       <div className="flex items-center gap-2">
                         {SDKIcon(log.phaseNode!)} {log.phaseNode}
                       </div>

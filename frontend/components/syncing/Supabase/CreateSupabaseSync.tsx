@@ -131,7 +131,7 @@ export const CreateSupabaseSync = (props: { appId: string; closeModal: () => voi
             <div className="space-y-4">
               <RadioGroup value={phaseEnv} onChange={setPhaseEnv}>
                 <RadioGroup.Label as={Fragment}>
-                  <label className="block text-neutral-500 text-sm mb-2">Phase Environment</label>
+                  <label className="block text-neutral-500 text-sm mb-2">LibreSeal Environment</label>
                 </RadioGroup.Label>
                 <div className="flex flex-wrap items-center gap-2">
                   {appEnvsData?.appEnvironments.map((env: EnvironmentType) => (

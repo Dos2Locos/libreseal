@@ -6,7 +6,7 @@ export const VersionLabel = async () => {
 
   return (
     <Link
-      href={`https://github.com/phasehq/console/releases/tag/${healthData.version}`}
+      href={`https://github.com/Dos2Locos/libreseal/releases/tag/${healthData.version}`}
       target="_blank"
       rel="noreferrer"
       className="font-mono text-neutral-500 hover:text-neutral-400 transition ease text-sm"

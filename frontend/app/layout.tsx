@@ -24,8 +24,8 @@ const jetbrains_mono = JetBrains_Mono({
 
 const host = getHostname()
 
-const title = 'Phase Console'
-const description = 'Application secrets and configuration management for developers.'
+const title = 'LibreSeal'
+const description = 'Free, self-hosted secrets management. An independent fork of Phase Console.'
 
 // TODO: Set metadata for specific page routes
 export const metadata: Metadata = {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     title,
     description,
     url: host,
-    siteName: 'Phase',
+    siteName: 'LibreSeal',
     images: [
       {
         url: `${host}/assets/images/meta.png`,
@@ -65,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="image/svg+xml"
           href={`/favicon.svg`}
           key="favicon-safari"
-          color="#000000"
+          color="#059669"
         />
       </head>
       <Providers>

@@ -84,7 +84,7 @@ export const DeleteMemberConfirmDialog = (props: {
           {member.scimManaged && (
             <Alert variant="warning" size="sm">
               <div>
-                <strong>SCIM-provisioned user:</strong> Removing this user from Phase will not
+                <strong>SCIM-provisioned user:</strong> Removing this user from LibreSeal will not
                 remove them from your identity provider. They will be re-created on the next
                 SCIM sync unless you also deprovision them from your IdP.
               </div>

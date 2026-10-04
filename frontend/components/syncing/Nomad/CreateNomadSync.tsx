@@ -140,7 +140,7 @@ export const CreateNomadSync = (props: { appId: string; closeModal: () => void }
               <RadioGroup value={phaseEnv} onChange={setPhaseEnv}>
                 <RadioGroup.Label as={Fragment}>
                   <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Phase Environment
+                    LibreSeal Environment
                   </label>
                 </RadioGroup.Label>
                 <div className="flex flex-wrap items-center gap-2">

@@ -101,7 +101,7 @@ export const SecretPropertyDiffs = ({
                     disabled={Boolean(secret.rotatingSecretId)}
                     title={
                       secret.rotatingSecretId
-                        ? "This value is managed by the Phase rotation engine and can't be restored"
+                        ? "This value was managed by a rotating secret and can't be restored"
                         : 'Restore this value'
                     }
                   >

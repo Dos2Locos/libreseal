@@ -215,7 +215,7 @@ export const CreateAzureKeyVaultSync = (props: { appId: string; closeModal: () =
             <div className="space-y-4">
               <RadioGroup value={phaseEnv} onChange={setPhaseEnv}>
                 <RadioGroup.Label as={Fragment}>
-                  <label className="block text-neutral-500 text-sm mb-2">Phase Environment</label>
+                  <label className="block text-neutral-500 text-sm mb-2">LibreSeal Environment</label>
                 </RadioGroup.Label>
                 <div className="flex flex-wrap items-center gap-2">
                   {appEnvsData.appEnvironments.map((env: EnvironmentType) => (
@@ -284,7 +284,7 @@ export const CreateAzureKeyVaultSync = (props: { appId: string; closeModal: () =
 
               {syncMode === 'individual' && (
                 <div className="text-sm text-neutral-500">
-                  Each Phase secret will be synced as a separate secret in Azure Key Vault.
+                  Each LibreSeal secret will be synced as a separate secret in Azure Key Vault.
                   Underscores (_) in secret names are replaced with hyphens (-).
                 </div>
               )}
@@ -292,7 +292,7 @@ export const CreateAzureKeyVaultSync = (props: { appId: string; closeModal: () =
               {syncMode === 'blob' && (
                 <div className="space-y-4">
                   <div className="text-sm text-neutral-500">
-                    All Phase secrets will be synced as a single JSON blob to one Azure Key Vault
+                    All LibreSeal secrets will be synced as a single JSON blob to one Azure Key Vault
                     secret.
                   </div>
 
@@ -444,7 +444,7 @@ export const CreateAzureKeyVaultSync = (props: { appId: string; closeModal: () =
               className="accent-emerald-500"
             />
             <span>
-              I understand that secrets in the destination that are not in Phase will be{' '}
+              I understand that secrets in the destination that are not in LibreSeal will be{' '}
               {syncMode === 'individual' ? 'disabled' : 'overwritten'}.
               <span className="text-red-500 ml-0.5">*</span>
             </span>

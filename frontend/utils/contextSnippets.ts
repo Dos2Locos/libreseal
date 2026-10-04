@@ -19,7 +19,7 @@ export const generateCommand = (
   commandType === 'cli'
     ? [
         `export PHASE_HOST=${getHostname()} && export PHASE_SERVICE_TOKEN=${authToken} && echo "Note: This token will expire ${expiryText}"`,
-        `phase secrets list --app-id ${appId}${env ? ` --env ${env}` : ''}${path !== '' ? ` --path ${path}` : ''}`
+        `libreseal secrets list --app-id ${appId}${env ? ` --env ${env}` : ''}${path !== '' ? ` --path ${path}` : ''}`
       ].join('\n')
     : [
         `export PHASE_PAT='${authToken}' && echo "Note: This token will expire ${expiryText}"`,

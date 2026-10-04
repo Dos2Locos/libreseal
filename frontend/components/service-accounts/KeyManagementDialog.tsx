@@ -177,7 +177,7 @@ export const KeyManagementDialog = ({
 
           <div className="inline-flex items-center gap-2">
             <Link
-              href="https://docs.phase.dev/access-control/service-accounts"
+              href="https://github.com/Dos2Locos/libreseal#readme"
               target="_blank"
               rel="noreferrer"
             >

@@ -140,8 +140,8 @@ export const generatePageTitle = (ctx: NavigationContext): string => {
     .reverse()
 
   if (titleParts.length === 0) {
-    return 'Phase Console'
+    return 'LibreSeal'
   }
 
-  return `${titleParts.join(' · ')} | Phase Console`
+  return `${titleParts.join(' · ')} | LibreSeal`
 }

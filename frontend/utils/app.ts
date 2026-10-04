@@ -35,7 +35,7 @@ const APP_VERSION = 1
 
 const EXAMPLE_APP_README = `## Example App
 
-This is an example application with some dummy secrets to help you get started with Phase.
+This is an example application with some dummy secrets to help you get started with LibreSeal.
 
 ### App README
 
@@ -50,14 +50,15 @@ App READMEs support Markdown rendering, making them a great place for developer 
 ### Code blocks
 
 \`\`\`bash
-# Install the Phase CLI
-curl -fsSL https://pkg.phase.dev/install.sh | bash
+# Install the LibreSeal CLI from source
+git clone https://github.com/Dos2Locos/libreseal-cli.git
+cd libreseal-cli && ./scripts/install-from-source.sh
 \`\`\`
 
 \`\`\`bash
 # Initialize and pull secrets
-phase init
-phase secrets list
+libreseal init
+libreseal secrets list
 \`\`\`
 
 > You can edit this README in **Settings**.

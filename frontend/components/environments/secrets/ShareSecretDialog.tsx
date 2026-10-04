@@ -187,7 +187,7 @@ export const ShareSecretDialog = ({ secret }: { secret: SecretType }) => {
                 <div>
                   <div className="text-xs font-medium text-black dark:text-white">Permalink</div>
                   <div className="text-neutral-500 text-xs">
-                    Share the permalink to this secret with your team on Phase. Only users with
+                    Share the permalink to this secret with your team on LibreSeal. Only users with
                     access to this Environment will be able to open this link.
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export const ShareSecretDialog = ({ secret }: { secret: SecretType }) => {
                       Share with Lockbox
                     </div>
                     <div className="text-neutral-500 text-xs">
-                      Create a link to share this secret via Phase Lockbox with Zero-Trust
+                      Create a link to share this secret via LibreSeal Lockbox with Zero-Trust
                       encryption. Any user with the link will be able to view this secret.
                     </div>
                   </div>

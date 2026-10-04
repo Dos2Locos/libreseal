@@ -6,7 +6,7 @@ export const CliCommand = (props: {
   prefix?: string;
   wrap?: boolean;
 }) => {
-  const prefix = props.prefix ?? 'phase'
+  const prefix = props.prefix ?? 'libreseal'
   const wrap = props.wrap ?? false
 
   const prefixedCommand = prefix ? `${prefix} ${props.command}` : props.command

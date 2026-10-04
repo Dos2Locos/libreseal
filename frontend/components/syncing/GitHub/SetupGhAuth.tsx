@@ -90,9 +90,9 @@ export const SetupGhAuth = () => {
   const disabled = !clientId || clientId?.includes('BAKED')
 
   const docsLink =
-    'https://docs.phase.dev/self-hosting/configuration/envars#git-hub-enterprise-self-hosted-integration'
+    'https://github.com/Dos2Locos/libreseal#readme'
   const githubComDocsLink =
-    'https://docs.phase.dev/self-hosting/configuration/envars#git-hub-integration'
+    'https://github.com/Dos2Locos/libreseal#readme'
 
   return (
     <form className="space-y-6" onSubmit={initiateOAuth}>

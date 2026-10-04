@@ -81,7 +81,7 @@ const SecretsOneLiner = ({
   appName,
   env = 'development',
   path = '',
-  placeholder = 'phase secrets list',
+  placeholder = 'libreseal secrets list',
   size = 'md',
   label,
   type = 'cli',

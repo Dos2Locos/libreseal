@@ -173,7 +173,7 @@ export const CreateUserTokenDialog = (props: { organisationId: string }) => {
                       You will need to enable server-side encryption (SSE) for any Apps that you
                       want to manage secrets with via the Public API.
                       <Link
-                        href="https://docs.phase.dev/console/apps#settings"
+                        href="https://github.com/Dos2Locos/libreseal#readme"
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -208,7 +208,7 @@ export const CreateUserTokenDialog = (props: { organisationId: string }) => {
                         Example with <code>curl</code>
                       </div>
                       <Link
-                        href="https://docs.phase.dev/public-api"
+                        href="https://github.com/Dos2Locos/libreseal#readme"
                         target="_blank"
                         rel="noreferrer"
                       >

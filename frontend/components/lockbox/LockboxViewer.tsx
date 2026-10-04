@@ -65,7 +65,7 @@ export const LockboxViewer = (props: { box: LockboxType }) => {
           </h1>
           {!secret && (
             <p className="text-neutral-500 text-base md:text-lg mt-2 max-w-lg mx-auto">
-              You&apos;ve received a secret via Phase Lockbox, secured with Zero-Trust encryption.
+              You&apos;ve received a secret via LibreSeal Lockbox, secured with Zero-Trust encryption.
             </p>
           )}
         </div>

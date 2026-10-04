@@ -575,7 +575,7 @@ export default function OIDCPage(props: { params: Promise<{ team: string }> }) {
               <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
                 <p>
                   You will be redirected to your identity provider to complete a test
-                  authentication. Once complete, you will be sent back to Phase Console.
+                  authentication. Once complete, you will be sent back to LibreSeal.
                 </p>
                 <Alert variant="warning" icon>
                   <p>
