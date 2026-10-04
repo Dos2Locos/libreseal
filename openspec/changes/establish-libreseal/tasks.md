@@ -33,12 +33,12 @@
 
 ## 5. [cli] libreseal-cli
 
-- [ ] 5.1 [cli] Renombrar comando y binario a `libreseal` (root, goreleaser, Dockerfile, install docs) y marca LibreSeal; verificar `go build ./... && ./libreseal --help`
-- [ ] 5.2 [cli] Lectura central de `LIBRESEAL_*` con alias `PHASE_*`, sin host por defecto de Phase Cloud; tests unitarios de precedencia y de ausencia de default; verificar `go test ./...`
-- [ ] 5.3 [cli] Sustituir `update`, `docs` y `console` para no usar dominios de Phase; verificar `go test ./...` y `grep -rn "phase.dev" src --include='*.go'` solo en tests/comentarios de atribución
-- [ ] 5.4 [cli] Adaptar el skill embebido a `LIBRESEAL.md` (comandos `libreseal`, mínimo privilegio, aviso de detección eludible) y los nombres de instalación del skill; test que extrae comandos del skill y comprueba que existen en el árbol cobra
-- [ ] 5.5 [cli] Mensaje claro para `dynamic-secrets` cuando el servidor responde 404 y `run` sin errores de leases; verificar con test o ejecución contra la instancia local
-- [ ] 5.6 [cli] README: instalación desde fuente, configuración, actualización, compatibilidad con `phase` y licencia GPL-3.0/atribución; verificar que los comandos del README se ejecutan
+- [x] 5.1 [cli] Renombrar comando y binario a `libreseal` (root, goreleaser, Dockerfile, install docs) y marca LibreSeal; verificar `go build ./... && ./libreseal --help`
+- [x] 5.2 [cli] Lectura central de `LIBRESEAL_*` con alias `PHASE_*`, sin host por defecto de Phase Cloud; tests unitarios de precedencia y de ausencia de default; verificar `go test ./...`
+- [x] 5.3 [cli] Sustituir `update`, `docs` y `console` para no usar dominios de Phase; verificar `go test ./...` y `grep -rn "phase.dev" src --include='*.go'` solo en tests/comentarios de atribución
+- [x] 5.4 [cli] Adaptar el skill embebido a `LIBRESEAL.md` (comandos `libreseal`, mínimo privilegio, aviso de detección eludible) y los nombres de instalación del skill; test que extrae comandos del skill y comprueba que existen en el árbol cobra
+- [x] 5.5 [cli] Mensaje claro para `dynamic-secrets` cuando el servidor responde 404 y `run` sin errores de leases; verificar con test o ejecución contra la instancia local
+- [x] 5.6 [cli] README: instalación desde fuente, configuración, actualización, compatibilidad con `phase` y licencia GPL-3.0/atribución; verificar que los comandos del README se ejecutan
 
 ## 6. [skills] libreseal-skills
 
