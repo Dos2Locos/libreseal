@@ -26,10 +26,10 @@
 
 ## 4. Despliegue autoalojado reproducible
 
-- [ ] 4.1 Reescribir `docker-compose.yml` para construir desde fuente con nombres `libreseal-*` (D7) y actualizar `.env.example` sin secretos fijos; verificar con `docker compose config`
-- [ ] 4.2 Crear `scripts/libreseal-init.sh` (genera `.env`, no sobrescribe) con test de shell (dos ejecuciones → secretos distintos; segunda ejecución sobre `.env` existente → sin cambios)
+- [x] 4.1 Reescribir `docker-compose.yml` para construir desde fuente con nombres `libreseal-*` (D7) y actualizar `.env.example` sin secretos fijos; verificar con `docker compose config`
+- [x] 4.2 Crear `scripts/libreseal-init.sh` (genera `.env`, no sobrescribe) con test de shell (dos ejecuciones → secretos distintos; segunda ejecución sobre `.env` existente → sin cambios)
 - [ ] 4.3 Crear `scripts/libreseal-backup.sh` y `scripts/libreseal-restore.sh`; verificar con un ciclo copia → borrado de volumen → restauración en la validación 7.6
-- [ ] 4.4 Añadir comprobación de CI (workflow de GitHub Actions) que falle si reaparece `ee/` o dependencias `posthog-js`/`@stripe/*`; verificar ejecutando el script localmente
+- [x] 4.4 Añadir comprobación de CI (workflow de GitHub Actions) que falle si reaparece `ee/` o dependencias `posthog-js`/`@stripe/*`; verificar ejecutando el script localmente
 
 ## 5. [cli] libreseal-cli
 
