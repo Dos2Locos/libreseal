@@ -12,7 +12,6 @@ import {
 } from '@/utils/localStorage'
 import axios from 'axios'
 import { toast } from 'react-toastify'
-import posthog from 'posthog-js'
 
 let csrfTokenPromise: Promise<string> | null = null
 
@@ -55,7 +54,6 @@ export const handleSignout = async () => {
   // Quiesce polls first — a poll tick racing the logout would 403.
   graphQlClient.stop()
   try {
-    posthog.reset()
     // Drop the deviceKey for the active password user only. SSO users use
     // `phaseMemberDeviceKeys` and are unaffected. The userId is stashed by
     // UserProvider so this works for both manual logout and the auto-logout

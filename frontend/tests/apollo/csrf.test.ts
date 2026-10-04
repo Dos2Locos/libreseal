@@ -9,7 +9,6 @@ jest.mock('axios', () => ({
   __esModule: true,
   default: { post: jest.fn(), isAxiosError: jest.fn(() => true) },
 }))
-jest.mock('posthog-js', () => ({ __esModule: true, default: { reset: jest.fn() } }))
 jest.mock('react-toastify', () => ({ toast: { error: jest.fn() } }))
 
 const apiBase = 'https://console.example.com/service'
