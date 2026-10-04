@@ -22,7 +22,7 @@
 
 - [ ] 3.1 Diseñar logotipo, wordmark y favicon propios en SVG/ICO en `frontend/public` y componentes de logo; documentar su origen y licencia en `frontend/public/brand/README.md`; verificar visualmente en `/login`
 - [ ] 3.2 Cambiar textos visibles, títulos (`formatTitle`), metadatos y enlaces de documentación a LibreSeal y añadir el aviso de no afiliación en login; verificar con captura de `/login` y `grep -rn "docs.phase.dev" frontend/{app,components}` vacío
-- [ ] 3.3 Añadir `NOTICE` con atribución a Phase/Phi Security Inc. y licencias por componente, conservando `LICENSE`; verificar presencia y contenido
+- [x] 3.3 Añadir `NOTICE` con atribución a Phase/Phi Security Inc. y licencias por componente, conservando `LICENSE`; verificar presencia y contenido
 
 ## 4. Despliegue autoalojado reproducible
 
