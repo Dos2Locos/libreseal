@@ -1,0 +1,53 @@
+schema: spec-driven
+
+# Project context: constraints that guide OpenSpec artifacts and workflows.
+context: |
+  LibreSeal is an independent, community fork of Phase Console (phasehq/console),
+  not affiliated with or endorsed by Phi Security Inc. / Phase. Target: self-hosted
+  secrets management for homelabs first, kept ready to grow as a public project.
+  Repositories (GitHub org Dos2Locos): libreseal (server: Django backend + Next.js
+  frontend + nginx, forked from phasehq/console), libreseal-cli (Go, fork of
+  phasehq/cli), libreseal-skills (agent skills, fork of phasehq/ai). Specs and
+  changes for all three live in this repo; a change touching CLI or skills must say
+  which repo each task targets and which version combination it verified.
+
+  Licensing (hard constraints):
+  - Console code outside any "ee/" directory is MIT (Phi Security Inc.); keep the
+    copyright notices, LICENSE and git history.
+  - backend/ee and frontend/ee are under the Phase Console Enterprise License: no
+    production use or redistribution without a Phase subscription. LibreSeal must not
+    ship, unlock, copy, translate or re-implement-by-reading that code. Replacements
+    must be clean-room implementations written without consulting ee/ sources, in a
+    separate change that states this.
+  - libreseal-cli is GPL-3.0 (derived work stays GPL-3.0). libreseal-skills and the
+    Phase SDKs are MIT.
+
+  Product rules:
+  - No commercial plans, seat/app/environment quotas, license servers, billing,
+    upsell UI or Phase Cloud dependencies. Never fake an Enterprise license or plan to
+    unlock features; express availability as LibreSeal feature flags instead.
+  - Commercial restrictions may be removed; security controls (RBAC, end-to-end
+    encryption, audit logs, network policies, token scopes) must never be weakened.
+    When a security control cannot be enforced, fail closed and document it.
+  - Do not change cryptographic algorithms, secret/token formats or public API/CLI
+    contracts unless a change includes a demonstrated need and a compatibility plan.
+  - Agent-facing material must never print secrets, put them in prompts or write them
+    to version-controlled files; prefer process injection (libreseal run). Agents use
+    least-privilege service account tokens, never admin/user tokens.
+
+  Conventions:
+  - OpenSpec artifacts are written in Spanish; code, identifiers, commit messages and
+    PR titles in English (Conventional Commits). Small, focused commits.
+  - Keep changes bounded: one capability-level concern per change.
+  - Validation must be executed, not assumed: record commands run and their results;
+    use synthetic secrets only; state any check that could not be run and why.
+
+rules:
+  proposal:
+    - State explicitly what is out of scope and which repos (libreseal, libreseal-cli, libreseal-skills) are touched.
+    - Flag every ee/-licensed dependency affected and how it is handled.
+  specs:
+    - Every requirement needs at least one verifiable scenario with concrete commands, endpoints or UI steps.
+  tasks:
+    - Prefix tasks with the target repo when it is not this one, e.g. [cli] or [skills].
+    - Include validation tasks that run real commands against a local instance.
