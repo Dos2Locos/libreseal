@@ -17,7 +17,6 @@ def test_new_organisation_creates_keyed_managed_roles(
     from backend.graphene.mutations.organisation import CreateOrganisationMutation
 
     settings.APP_HOST = "self-hosted"
-    settings.PHASE_LICENSE = ""
     mock_organisation.objects.filter.return_value.exists.return_value = False
     org = MagicMock()
     mock_organisation.objects.create.return_value = org

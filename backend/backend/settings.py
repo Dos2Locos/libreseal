@@ -469,8 +469,3 @@ SLACK_WEBHOOK_URI = f"https://hooks.slack.com/services/{os.getenv('SLACK_NOTIFIE
 # Value should be either 'self' or 'cloud'
 APP_HOST = os.getenv("APP_HOST", "self")
 
-
-# LibreSeal ships no license verifier or billing integration: these remain
-# defined (empty) only so that legacy references resolve.
-PHASE_LICENSE = None
-STRIPE = {}
