@@ -476,7 +476,3 @@ TRUSTED_PROXY_CIDRS = [
     c.strip() for c in os.getenv("TRUSTED_PROXY_CIDRS", "").split(",") if c.strip()
 ]
 
-# LibreSeal ships no license verifier or billing integration: these remain
-# defined (empty) only so that legacy references resolve.
-PHASE_LICENSE = None
-STRIPE = {}

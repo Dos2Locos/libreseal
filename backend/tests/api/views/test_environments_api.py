@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from contextlib import nullcontext
 from unittest.mock import Mock, MagicMock, patch
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework import status
@@ -506,6 +507,12 @@ class TestPublicEnvironmentDetailViewUpdate:
 class TestPublicEnvironmentDetailViewDelete:
 
     @pytest.fixture(autouse=True)
+    def _no_db_transaction(self):
+        # Deletes run inside transaction.atomic(); these tests use mocks only.
+        with patch("api.views.environments.transaction.atomic", return_value=nullcontext()):
+            yield
+
+    @pytest.fixture(autouse=True)
     def setup(self, settings):
         settings.DATABASES = {
             "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
@@ -528,6 +535,29 @@ class TestPublicEnvironmentDetailViewDelete:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         env.delete.assert_called_once()
+
+    @patch("api.views.environments.user_can_access_environment", return_value=True)
+    @patch("api.views.environments.Environment")
+    @patch("api.views.environments.can_use_custom_envs", return_value=True)
+    @patch("api.views.environments.user_has_permission", return_value=True)
+    @patch("api.views.environments.PlanBasedRateThrottle.allow_request", return_value=True)
+    @patch("api.views.environments.IsIPAllowed.has_permission", return_value=True)
+    def test_delete_environment_with_live_legacy_credentials_returns_409(
+        self, _ip, _throttle, _perm, _custom, mock_env_model, _access
+    ):
+        from backend.edition import Feature, FeatureUnavailable
+
+        env = _make_env(app=self.app, name="test-env", env_type="custom", index=3)
+        env.delete.side_effect = FeatureUnavailable(Feature.DYNAMIC_SECRETS)
+        mock_env_model.objects.select_related.return_value.get.return_value = env
+
+        request = _build_request("delete", f"/public/v1/environments/{env.id}/", self.app)
+        with patch("api.views.environments.log_audit_event") as audit:
+            response = self.view(request, env_id=env.id)
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert "libreseal_remove_legacy_credentials" in response.data["error"]
+        audit.assert_not_called()
 
     @patch("api.views.environments.Environment")
     @patch("api.views.environments.user_has_permission", return_value=True)
