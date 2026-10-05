@@ -19,7 +19,9 @@ jobs:
       - name: LibreSeal invariants (no ee/, no billing or telemetry deps)
         run: scripts/check-libreseal-guard.sh
       - name: Deployment script tests
-        run: scripts/tests/test-libreseal-init.sh
+        run: |
+          scripts/tests/test-libreseal-init.sh
+          scripts/tests/test-nginx-real-ip.sh
 
   backend:
     runs-on: ubuntu-latest

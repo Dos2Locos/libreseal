@@ -26,6 +26,9 @@ services:
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    environment:
+      NGINX_REAL_IP_FROM: "${NGINX_REAL_IP_FROM:-}"
+      NGINX_REAL_IP_HEADER: "${NGINX_REAL_IP_HEADER:-X-Forwarded-For}"
     depends_on:
       frontend:
         condition: service_started
