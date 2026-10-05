@@ -47,14 +47,36 @@ def _validate_ip(raw_ip):
         return None
 
 
+def _client_from_forwarded_for(header):
+    """Client IP from an X-Forwarded-For chain appended by trusted proxies.
+
+    Walks the chain from the right (the entry added by the proxy closest to
+    us) skipping trusted proxies; the first untrusted address is the client.
+    Entries to its left were supplied by the client and are ignored. Returns
+    None when the chain is unusable (empty or a malformed entry is reached).
+    """
+    entries = [e.strip() for e in header.split(",")]
+    for entry in reversed(entries):
+        ip = _validate_ip(entry)
+        if ip is None:
+            return None
+        if not is_trusted_proxy(ip):
+            return ip
+    # Every hop is a trusted (internal) address: the left-most one is the
+    # client, e.g. a host on the private network.
+    return _validate_ip(entries[0]) if entries else None
+
+
 def get_client_ip(request):
     """
     Get the client IP address as a single string.
 
-    Forwarded headers (X-Real-IP, then the first X-Forwarded-For entry) are
-    honoured only when the direct peer (REMOTE_ADDR) is a trusted proxy;
-    otherwise they could be spoofed by any client that reaches the backend
-    directly. Falls back to REMOTE_ADDR.
+    Forwarded headers are honoured only when the direct peer (REMOTE_ADDR)
+    is a trusted proxy; otherwise they could be spoofed by any client that
+    reaches the backend directly. X-Real-IP (set by the bundled nginx) is
+    preferred; X-Forwarded-For is resolved right to left, skipping trusted
+    proxies, so client-supplied entries are never used. Falls back to
+    REMOTE_ADDR.
 
     Args:
         request: Django request object
@@ -65,15 +87,13 @@ def get_client_ip(request):
     remote_addr = _validate_ip(request.META.get("REMOTE_ADDR"))
 
     if remote_addr and is_trusted_proxy(remote_addr):
-        # Prefer X-Real-IP (set by nginx)
         ip = _validate_ip(request.META.get("HTTP_X_REAL_IP"))
         if ip:
             return ip
 
-        # Fall back to X-Forwarded-For (first entry is the original client)
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
         if x_forwarded_for:
-            ip = _validate_ip(x_forwarded_for.split(",")[0])
+            ip = _client_from_forwarded_for(x_forwarded_for)
             if ip:
                 return ip
 

@@ -43,7 +43,9 @@ class TestGetClientIp:
             HTTP_X_FORWARDED_FOR="203.0.113.50, 70.41.3.18",
             REMOTE_ADDR="127.0.0.1",
         )
-        assert get_client_ip(req) == "203.0.113.50"
+        # Right-most untrusted hop: 70.41.3.18 connected to the trusted
+        # proxy; 203.0.113.50 is only what that client claimed.
+        assert get_client_ip(req) == "70.41.3.18"
 
     def test_x_forwarded_for_single_entry(self):
         req = _make_request(HTTP_X_FORWARDED_FOR="203.0.113.50", REMOTE_ADDR="172.18.0.5")
@@ -69,7 +71,8 @@ class TestGetClientIp:
             HTTP_X_FORWARDED_FOR="garbage, 10.0.0.2",
             REMOTE_ADDR="10.0.0.1",
         )
-        # First entry is invalid, so falls through to REMOTE_ADDR
+        # 10.0.0.2 is a trusted hop and the next entry is malformed, so
+        # the chain is unusable and REMOTE_ADDR is used
         assert get_client_ip(req) == "10.0.0.1"
 
     def test_ipv6_x_real_ip(self):
@@ -117,3 +120,46 @@ class TestTrustedProxies:
     def test_ipv4_mapped_peer_is_trusted(self):
         req = _make_request(HTTP_X_REAL_IP="203.0.113.9", REMOTE_ADDR="::ffff:172.18.0.2")
         assert get_client_ip(req) == "203.0.113.9"
+
+
+class TestForwardedForChain:
+    """X-Forwarded-For is resolved right to left (LibreSeal)."""
+
+    def test_client_prepended_entry_is_ignored(self):
+        # A client sends "X-Forwarded-For: 10.1.2.3"; an appending trusted
+        # proxy adds the real address 198.51.100.7.
+        req = _make_request(
+            HTTP_X_FORWARDED_FOR="10.1.2.3, 198.51.100.7",
+            REMOTE_ADDR="172.18.0.5",
+        )
+        assert get_client_ip(req) == "198.51.100.7"
+
+    def test_trusted_hops_are_skipped(self):
+        req = _make_request(
+            HTTP_X_FORWARDED_FOR="203.0.113.9, 172.18.0.7, 10.0.0.3",
+            REMOTE_ADDR="172.18.0.5",
+        )
+        assert get_client_ip(req) == "203.0.113.9"
+
+    def test_all_hops_trusted_returns_left_most(self):
+        req = _make_request(
+            HTTP_X_FORWARDED_FOR="192.168.1.20, 172.18.0.7",
+            REMOTE_ADDR="172.18.0.5",
+        )
+        assert get_client_ip(req) == "192.168.1.20"
+
+    def test_malformed_hop_falls_back_to_peer(self):
+        req = _make_request(
+            HTTP_X_FORWARDED_FOR="203.0.113.9, garbage",
+            REMOTE_ADDR="172.18.0.5",
+        )
+        assert get_client_ip(req) == "172.18.0.5"
+
+    def test_custom_trusted_proxies_define_hops(self, settings):
+        settings.TRUSTED_PROXY_CIDRS = ["198.51.100.0/24"]
+        req = _make_request(
+            HTTP_X_FORWARDED_FOR="203.0.113.9, 10.0.0.3, 198.51.100.8",
+            REMOTE_ADDR="198.51.100.7",
+        )
+        # 10.0.0.3 is not trusted under this setting, so it is the client.
+        assert get_client_ip(req) == "10.0.0.3"
