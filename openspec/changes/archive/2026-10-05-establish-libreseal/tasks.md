@@ -62,5 +62,5 @@
 ## 8. Documentación y entrega
 
 - [x] 8.1 README de `libreseal`: propósito y estado real, relación con Phase y atribuciones, instalación de servidor y CLI, skills, permisos para apps y agentes, copia/restauración, compatibilidad y limitaciones (funciones no disponibles, historial con `ee/`), contribución vía OpenSpec; verificar que cada comando documentado se ejecutó en la sección 7
-- [ ] 8.2 Commits pequeños por grupo, push de `feat/establish-libreseal` en los tres repos y PRs contra `main` de cada fork sin fusionar; enlazar los PRs entre sí
+- [x] 8.2 Commits pequeños por grupo, push de `feat/establish-libreseal` en los tres repos y PRs contra `main` de cada fork sin fusionar; enlazar los PRs entre sí
 - [x] 8.3 Proponer el siguiente cambio (`add-network-policy-enforcement`, sala limpia) como cambio OpenSpec separado en estado propuesto

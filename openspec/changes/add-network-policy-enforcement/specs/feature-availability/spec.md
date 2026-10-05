@@ -25,6 +25,10 @@ LibreSeal SHALL permitir crear, editar y asignar políticas de red y SHALL aplic
 - **WHEN** una política contiene una entrada que no es IP ni CIDR válido
 - **THEN** esa entrada no concede acceso y la creación por UI/API se rechaza con error de validación
 
+#### Scenario: Política heredada
+- **WHEN** una cuenta de servicio con una política de red existente en la base de datos (p. ej. migrada desde Phase) llama a la API pública
+- **THEN** la política se evalúa contra la IP de cliente en lugar de denegar siempre
+
 #### Scenario: Sin políticas
 - **WHEN** una cuenta sin políticas propias ni globales accede
 - **THEN** el acceso se evalúa solo con RBAC
