@@ -16,7 +16,11 @@ from api.utils.access.network_policies import (
     network_access_denied,
 )
 from backend.edition import Feature, feature_enabled
-from api.utils.access.org_resolution import resolve_org_id, resolve_via_model
+from api.utils.access.org_resolution import (
+    resolve_org_id,
+    resolve_orgs_via_model,
+    resolve_via_model,
+)
 
 
 def _output_graphene_type(info: GraphQLResolveInfo):
@@ -285,16 +289,32 @@ class OrgSSOEnforcementMiddleware:
         return result
 
     @classmethod
-    def _resolve_org_id(cls, request, kwargs, info=None):
+    def _request_cache(cls, request):
         request_cache = getattr(request, cls._ID_CACHE_ATTR, None)
-        if request_cache is None:
+        if not isinstance(request_cache, dict):
             request_cache = {}
             setattr(request, cls._ID_CACHE_ATTR, request_cache)
+        return request_cache
+
+    @classmethod
+    def _resolve_org_id(cls, request, kwargs, info=None):
+        """First organisation referenced by the resolver kwargs, or None."""
+        return next(cls._iter_org_ids(request, kwargs, info, all_ids=False), None)
+
+    @classmethod
+    def resolve_org_ids(cls, request, kwargs, info=None):
+        """Every organisation referenced by the resolver kwargs, including
+        all items of bulk arguments (`ids`, lists of input objects)."""
+        return set(cls._iter_org_ids(request, kwargs, info, all_ids=True))
+
+    @classmethod
+    def _iter_org_ids(cls, request, kwargs, info=None, all_ids=False):
+        request_cache = cls._request_cache(request)
 
         for direct in ("organisation_id", "org_id"):
             val = kwargs.get(direct)
             if val:
-                return str(val)
+                yield str(val)
 
         for name, value in kwargs.items():
             if not value or not isinstance(name, str):
@@ -302,41 +322,49 @@ class OrgSSOEnforcementMiddleware:
 
             # `<model>_id` — FK auto-discovery in org_resolution.
             if name.endswith("_id"):
+                if name in ("organisation_id", "org_id", "token_id"):
+                    continue
                 org_id = resolve_org_id(name, value, request_cache)
                 if org_id:
-                    return org_id
+                    yield org_id
                 continue
 
             # Bare `id` / `ids` — model derived from the mutation's
             # return type or an `org_resource_model` class attribute.
             if name in ("id", "ids"):
-                if info is None:
-                    continue
-                model_name = _model_for_mutation(info)
+                model_name = _model_for_mutation(info) if info is not None else None
                 if not model_name:
                     continue
-                pk = value[0] if name == "ids" and value else value
-                if pk and not isinstance(pk, (str, int)):
+                if name == "ids" and all_ids:
+                    yield from resolve_orgs_via_model(
+                        model_name, list(value), request_cache
+                    )
                     continue
-                org_id = resolve_via_model(model_name, pk, request_cache)
-                if org_id:
-                    return org_id
+                if name == "ids":
+                    value = value[0] if value else None
+                if isinstance(value, (str, int)):
+                    org_id = resolve_via_model(model_name, value, request_cache)
+                    if org_id:
+                        yield org_id
                 continue
 
-            # `*_data` input objects — recurse into their `*_id` fields.
-            if name.endswith("_data"):
-                org_id = cls._resolve_from_input_value(value, request_cache)
-                if org_id:
-                    return org_id
+            # Input objects (`*_data`, `*_inputs`, `input`) — recurse into
+            # their `*_id` fields, and their bare `id` when the mutation's
+            # model is known.
+            if name.endswith(("_data", "_inputs")) or name == "input":
+                model_name = _model_for_mutation(info) if info is not None else None
+                yield from cls._iter_input_org_ids(
+                    value, request_cache, model_name, all_ids
+                )
 
         token_id = kwargs.get("token_id")
         if token_id:
-            return cls._lookup_token_org(request, token_id)
-
-        return None
+            org_id = cls._lookup_token_org(request, token_id)
+            if org_id:
+                yield org_id
 
     @classmethod
-    def _resolve_from_input_value(cls, value, request_cache):
+    def _iter_input_org_ids(cls, value, request_cache, model_name=None, all_ids=False):
         """Walk an input object (or list of them) for any `<model>_id`."""
         items = value if isinstance(value, (list, tuple)) else [value]
         for item in items:
@@ -350,16 +378,29 @@ class OrgSSOEnforcementMiddleware:
                 )
             except Exception:
                 continue
+            found = False
             for key, val in entries:
                 if not val or not isinstance(key, str):
                     continue
+                org_id = None
                 if key in ("organisation_id", "org_id"):
-                    return str(val)
-                if key.endswith("_id"):
+                    org_id = str(val)
+                elif key.endswith("_id"):
                     org_id = resolve_org_id(key, val, request_cache)
-                    if org_id:
-                        return org_id
-        return None
+                elif key == "id" and model_name and isinstance(val, (str, int)):
+                    org_id = resolve_via_model(model_name, val, request_cache)
+                if org_id:
+                    found = True
+                    yield org_id
+                    if not all_ids:
+                        return
+            if found and not all_ids:
+                return
+
+    @classmethod
+    def _resolve_from_input_value(cls, value, request_cache):
+        """Walk an input object (or list of them) for any `<model>_id`."""
+        return next(cls._iter_input_org_ids(value, request_cache), None)
 
     @classmethod
     def _lookup_token_org(cls, request, token_id):
@@ -372,7 +413,7 @@ class OrgSSOEnforcementMiddleware:
             ServiceAccountToken,
             UserToken,
         )
-        request_cache = getattr(request, cls._ID_CACHE_ATTR, {})
+        request_cache = cls._request_cache(request)
         cache_key = ("token_id", token_id)
         if cache_key in request_cache:
             return request_cache[cache_key]
@@ -420,37 +461,65 @@ class OrgSSOEnforcementMiddleware:
 
 class IPWhitelistMiddleware:
     """
-    Graphene middleware to enforce network access policy for human users
-    based on their organisation membership and IP address.
+    Graphene middleware enforcing network access policies on every resolver
+    that references an organisation's resources.
+
+    The organisations are resolved from the resolver arguments with the same
+    auto-discovery used for SSO enforcement (``organisation_id``, any
+    ``<model>_id``, bare ``id``/``ids``, input objects, ``token_id``), and
+    every referenced organisation is checked, so bulk arguments cannot mix
+    resources from an organisation whose policies deny the caller. Decisions
+    are cached per request and organisation.
     """
+
+    _DECISION_CACHE_ATTR = "_network_policy_decision_cache"
 
     def resolve(self, next, root, info: GraphQLResolveInfo, **kwargs):
         request = info.context
         user = getattr(request, "user", None)
 
-        organisation_id = kwargs.get("organisation_id")
         if not user or not user.is_authenticated:
             raise GraphQLError("Authentication required")
 
-        if not organisation_id:
-            # If the operation doesn't involve an org, skip check
-            return next(root, info, **kwargs)
-
-        org = Organisation.objects.get(id=organisation_id)
-
-        org_member = OrganisationMember.objects.filter(
-            organisation_id=organisation_id,
-            user_id=user.userId,
-            deleted_at__isnull=True,
-        ).first()
-
-        # Non-members are rejected by the resolvers' own permission checks.
-        if network_access_denied(org, org_member, self.get_client_ip(request)):
-            if feature_enabled(Feature.NETWORK_POLICIES):
-                raise IPRestrictedError(org.name)
-            raise NetworkPolicyUnenforceableError(org.name)
+        if kwargs:
+            org_ids = OrgSSOEnforcementMiddleware.resolve_org_ids(
+                request, kwargs, info
+            )
+            for org_id in sorted(org_ids):
+                self._enforce(request, user, org_id)
 
         return next(root, info, **kwargs)
+
+    def _enforce(self, request, user, organisation_id):
+        cache_l1 = getattr(request, self._DECISION_CACHE_ATTR, None)
+        if not isinstance(cache_l1, dict):
+            cache_l1 = {}
+            setattr(request, self._DECISION_CACHE_ATTR, cache_l1)
+
+        key = str(organisation_id)
+        if key not in cache_l1:
+            org = Organisation.objects.filter(id=organisation_id).first()
+            if org is None:
+                # Unknown organisation: nothing to protect; resolvers reject it.
+                cache_l1[key] = None
+            else:
+                org_member = OrganisationMember.objects.filter(
+                    organisation_id=organisation_id,
+                    user_id=user.userId,
+                    deleted_at__isnull=True,
+                ).first()
+                # Non-members are rejected by the resolvers' own permission
+                # checks; organisation-global policies still apply to them.
+                denied = network_access_denied(
+                    org, org_member, self.get_client_ip(request)
+                )
+                cache_l1[key] = org.name if denied else None
+
+        denied_org_name = cache_l1[key]
+        if denied_org_name is not None:
+            if feature_enabled(Feature.NETWORK_POLICIES):
+                raise IPRestrictedError(denied_org_name)
+            raise NetworkPolicyUnenforceableError(denied_org_name)
 
     def get_client_ip(self, request):
         return get_client_ip(request)

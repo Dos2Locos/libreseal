@@ -19,6 +19,7 @@ from django.core.cache import cache
 # Hand-maintained: kwargs whose model name doesn't match `<snake_case>_id`.
 KWARG_MODEL_ALIASES = {
     "env_id": "Environment",
+    "folder_id": "SecretFolder",
     "environment_id": "Environment",
     "member_id": "OrganisationMember",
     "invite_id": "OrganisationMemberInvite",
@@ -139,6 +140,28 @@ def resolve_via_model(model_name: str, id_value, request_cache: dict):
         pass
     request_cache[l1_key] = result
     return result
+
+
+def resolve_orgs_via_model(model_name: str, id_values, request_cache: dict):
+    """Organisation ids of every `model_name` row in `id_values`, in one
+    query. Used where all referenced organisations must be checked (e.g.
+    network access policies on bulk mutations), not just the first."""
+    ids = [v for v in id_values or () if isinstance(v, (str, int)) and v]
+    if not ids:
+        return set()
+    if len(ids) == 1:
+        org_id = resolve_via_model(model_name, ids[0], request_cache)
+        return {org_id} if org_id else set()
+
+    path = _path_to_organisation(model_name)
+    if not path:
+        return set()
+    try:
+        Model = apps.get_model("api", model_name)
+        rows = Model.objects.filter(pk__in=ids).values_list(path, flat=True).distinct()
+        return {str(org_id) for org_id in rows if org_id}
+    except Exception:
+        return set()
 
 
 def resolve_org_id(kwarg_name: str, id_value, request_cache: dict):

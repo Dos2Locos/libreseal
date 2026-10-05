@@ -164,3 +164,139 @@ def test_update_policy_rejects_invalid_entries(_f, _om, _perm, MockPolicy):
     with pytest.raises(GraphQLError, match="Invalid IP address"):
         UpdateNetworkAccessPolicyMutation.mutate(None, _info(), [policy_input])
     policy.save.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# GraphQL middleware: enforcement beyond `organisation_id`
+# ---------------------------------------------------------------------------
+
+from backend.graphene import middleware as mw  # noqa: E402
+
+
+class _Request:
+    def __init__(self):
+        self.user = MagicMock(is_authenticated=True, userId="u1")
+        self.session = {}
+
+
+def _gql_info(request=None):
+    info = MagicMock()
+    info.context = request or _Request()
+    return info
+
+
+def _org(name):
+    org = MagicMock()
+    org.name = name
+    return org
+
+
+@pytest.fixture
+def gql_env():
+    """Patch org lookup and policy decision: org-blocked denies, others allow."""
+    orgs = {"org-ok": _org("ok"), "org-blocked": _org("blocked")}
+    with patch.object(mw, "Organisation") as MockOrg, patch.object(
+        mw, "OrganisationMember"
+    ), patch.object(mw, "feature_enabled", return_value=True), patch.object(
+        mw, "network_access_denied", side_effect=lambda org, *_: org.name == "blocked"
+    ) as denied, patch.object(
+        mw.IPWhitelistMiddleware, "get_client_ip", return_value="192.0.2.10"
+    ):
+        MockOrg.objects.filter.side_effect = lambda id: MagicMock(
+            first=MagicMock(return_value=orgs.get(id))
+        )
+        yield denied
+
+
+@pytest.mark.parametrize(
+    "kwargs,resolved",
+    [
+        ({"env_id": "e1"}, "org-blocked"),  # e.g. secrets(envId), folders(envId)
+        ({"secret_id": "s1"}, "org-blocked"),  # e.g. secretHistory(secretId)
+        ({"folder_id": "f1"}, "org-blocked"),  # deleteSecretFolder
+    ],
+)
+def test_graphql_denies_fields_without_organisation_id(gql_env, kwargs, resolved):
+    next_ = MagicMock()
+    with patch.object(mw, "resolve_org_id", return_value=resolved):
+        with pytest.raises(mw.IPRestrictedError):
+            mw.IPWhitelistMiddleware().resolve(next_, None, _gql_info(), **kwargs)
+    next_.assert_not_called()
+
+
+def test_graphql_denies_bare_id_mutation(gql_env):
+    next_ = MagicMock()
+    with patch.object(mw, "_model_for_mutation", return_value="Secret"), patch.object(
+        mw, "resolve_via_model", return_value="org-blocked"
+    ):
+        with pytest.raises(mw.IPRestrictedError):
+            mw.IPWhitelistMiddleware().resolve(next_, None, _gql_info(), id="s1")
+    next_.assert_not_called()
+
+
+def test_graphql_bulk_ids_check_every_organisation(gql_env):
+    """A bulk mutation mixing resources of an allowed and a denied
+    organisation is denied, not just checked against the first item."""
+    next_ = MagicMock()
+    with patch.object(mw, "_model_for_mutation", return_value="Secret"), patch.object(
+        mw, "resolve_orgs_via_model", return_value={"org-ok", "org-blocked"}
+    ) as bulk:
+        with pytest.raises(mw.IPRestrictedError):
+            mw.IPWhitelistMiddleware().resolve(
+                next_, None, _gql_info(), ids=["s-ok", "s-blocked"]
+            )
+    assert bulk.call_args.args[1] == ["s-ok", "s-blocked"]
+    next_.assert_not_called()
+
+
+def test_graphql_input_list_checks_every_item(gql_env):
+    """updateNetworkAccessPolicy(policyInputs) cannot widen a policy of a
+    denied organisation by putting an allowed one first."""
+    next_ = MagicMock()
+    inputs = [{"id": "p-ok"}, {"id": "p-blocked"}]
+    with patch.object(
+        mw, "_model_for_mutation", return_value="NetworkAccessPolicy"
+    ), patch.object(
+        mw,
+        "resolve_via_model",
+        side_effect=lambda model, pk, cache: {"p-ok": "org-ok", "p-blocked": "org-blocked"}[pk],
+    ):
+        with pytest.raises(mw.IPRestrictedError):
+            mw.IPWhitelistMiddleware().resolve(
+                next_, None, _gql_info(), policy_inputs=inputs
+            )
+    next_.assert_not_called()
+
+
+def test_graphql_allows_when_policies_allow(gql_env):
+    next_ = MagicMock(return_value="ok")
+    with patch.object(mw, "resolve_org_id", return_value="org-ok"):
+        assert (
+            mw.IPWhitelistMiddleware().resolve(next_, None, _gql_info(), env_id="e1")
+            == "ok"
+        )
+
+
+def test_graphql_unknown_organisation_passes_to_resolver(gql_env):
+    next_ = MagicMock(return_value="resolver decides")
+    assert (
+        mw.IPWhitelistMiddleware().resolve(
+            next_, None, _gql_info(), organisation_id="org-missing"
+        )
+        == "resolver decides"
+    )
+
+
+def test_graphql_decision_cached_per_request(gql_env):
+    request = _Request()
+    next_ = MagicMock(return_value="ok")
+    middleware = mw.IPWhitelistMiddleware()
+    for _ in range(3):
+        middleware.resolve(next_, None, _gql_info(request), organisation_id="org-ok")
+    assert gql_env.call_count == 1
+
+
+def test_graphql_fields_without_arguments_are_not_checked(gql_env):
+    next_ = MagicMock(return_value="ok")
+    assert mw.IPWhitelistMiddleware().resolve(next_, None, _gql_info()) == "ok"
+    gql_env.assert_not_called()
