@@ -300,3 +300,33 @@ def test_graphql_fields_without_arguments_are_not_checked(gql_env):
     next_ = MagicMock(return_value="ok")
     assert mw.IPWhitelistMiddleware().resolve(next_, None, _gql_info()) == "ok"
     gql_env.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Token-minting identity endpoints (AWS IAM, Azure Entra)
+# ---------------------------------------------------------------------------
+
+
+def test_identity_network_policy_denial_uses_client_ip():
+    from api.utils.identity.common import network_policy_denial
+
+    sa = MagicMock()
+    request = MagicMock()
+    with patch(
+        "api.utils.access.ip.get_client_ip", return_value="192.0.2.10"
+    ), patch.object(np, "network_access_denied", return_value=True) as denied, patch.object(
+        np, "feature_enabled", return_value=True
+    ):
+        response = network_policy_denial(request, sa)
+    denied.assert_called_once_with(sa.organisation, sa, "192.0.2.10")
+    assert response.status_code == 403
+    assert np.DENIED_MESSAGE.encode() in response.content
+
+
+def test_identity_network_policy_allows():
+    from api.utils.identity.common import network_policy_denial
+
+    with patch("api.utils.access.ip.get_client_ip", return_value="10.1.2.3"), patch.object(
+        np, "network_access_denied", return_value=False
+    ):
+        assert network_policy_denial(MagicMock(), MagicMock()) is None

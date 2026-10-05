@@ -11,6 +11,26 @@ def resolve_service_account(account_id):
     return service_account
 
 
+def network_policy_denial(request, service_account):
+    """403 response if the service account's network access policies deny
+    the client IP, else None. Token-minting endpoints authenticate with an
+    external identity instead of a LibreSeal token, so they must apply the
+    policies themselves."""
+    from django.http import JsonResponse
+
+    from api.utils.access.ip import get_client_ip
+    from api.utils.access.network_policies import (
+        denial_message,
+        network_access_denied,
+    )
+
+    if network_access_denied(
+        service_account.organisation, service_account, get_client_ip(request)
+    ):
+        return JsonResponse({"error": denial_message()}, status=403)
+    return None
+
+
 def resolve_attached_identity(service_account, provider: str):
     """Return the first available identity for the service account and provider."""
     return service_account.identities.filter(provider=provider, deleted_at=None).first()

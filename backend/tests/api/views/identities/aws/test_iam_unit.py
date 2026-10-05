@@ -27,6 +27,12 @@ from api.views.identities.aws.iam import aws_iam_auth
 class TestAwsIamAuth(unittest.TestCase):
     def setUp(self):
         self.factory = RequestFactory()
+        # No network access policies apply unless a test says otherwise.
+        policy_patch = patch(
+            "api.views.identities.aws.iam.network_policy_denial", return_value=None
+        )
+        self.mock_network_policy = policy_patch.start()
+        self.addCleanup(policy_patch.stop)
         self.service_account_id = "12345678-1234-1234-1234-123456789abc"
 
         # Valid AWS STS response XML
@@ -246,3 +252,25 @@ class TestAwsIamAuth(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("authentication", json.loads(response.content))
+
+    @patch("api.views.identities.aws.iam.requests.request")
+    @patch("api.views.identities.aws.iam.resolve_service_account")
+    def test_network_policy_denies_before_external_validation(
+        self, mock_resolve, mock_external
+    ):
+        """A service account whose network policies exclude the client IP
+        gets 403 and the external identity provider is never contacted."""
+        from django.http import JsonResponse
+
+        mock_resolve.return_value = MagicMock(server_wrapped_keyring="keyring")
+        self.mock_network_policy.return_value = JsonResponse(
+            {"error": "Access denied: a network access policy restricts access from your IP address."},
+            status=403,
+        )
+        response = aws_iam_auth(self.make_request(self.valid_payload))
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("network access policy", response.content.decode())
+        self.mock_network_policy.assert_called_once()
+        self.assertIs(self.mock_network_policy.call_args.args[1], mock_resolve.return_value)
+        mock_external.assert_not_called()
