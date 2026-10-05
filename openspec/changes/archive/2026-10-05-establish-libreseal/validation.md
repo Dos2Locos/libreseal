@@ -45,3 +45,17 @@ Nota: la denegación por entorno devuelve 401 (contrato upstream), no 403; el es
 | 7.10 OpenSpec | `openspec validate establish-libreseal --strict`: válido. Specs alineadas con el comportamiento verificado (401/403 en denegación por entorno, instalador del CLI, redacción de sealed en modo agente) |
 
 Combinación verificada: libreseal `7261b032` + libreseal-cli `132264f` (golang-sdk v2.4.1) + libreseal-skills `b88d772`.
+
+## Correcciones tras la revisión de código (después de archivar)
+
+Hallazgos de la revisión del PR #1 y su verificación. Instancia de prueba con el PR #1 integrado en la rama del PR #2; datos de Phase simulados con registros sintéticos.
+
+| Hallazgo | Corrección | Verificación |
+|---|---|---|
+| Secretos dinámicos omitidos en silencio al pedirlos por REST | 501 explícito si se piden (`dynamic`/`include_dynamic`) y el entorno contiene secretos dinámicos migrados; sin ellos, respuesta normal (la CLI los pide por defecto en `run`/`export`/`shell`/`get`) | CLI `secrets export` con un secreto dinámico migrado → "HTTP 501: The dynamic secrets feature is not available…"; REST sin `dynamic` → 200, con `dynamic=true` → 501; tras retirarlo, la CLI vuelve a funcionar |
+| Borrar app/entorno/carpeta con credenciales vivas daba 500 (REST) y, en apps, vaciaba `wrapped_key_share` antes del borrado abortado | Borrados en transacción; el rechazo se convierte en error claro (GraphQL) o 409 (REST); los secretos dinámicos con leases activos quedan protegidos de la cascada como los rotativos | GraphQL como Owner con un secreto rotativo con credencial activa: `deleteEnvironment` y `deleteApp` rechazados con el mensaje; entorno y app siguen existiendo, `wrapped_key_share` intacto, 0 eventos de auditoría nuevos |
+| Sin forma de retirar registros heredados | Comando `libreseal_remove_legacy_credentials`: lista; `--yes` borra los que no tienen credenciales vivas; `--yes --credentials-revoked` marca las credenciales como revocadas y borra el resto | Con credencial viva: "Removed 0 records" y aviso; con confirmación: "Removed 1 records", credencial `revoked`, registro borrado |
+| Ajustes muertos `PHASE_LICENSE`, `STRIPE` | Eliminados; la consulta `license` devuelve `null` (contrato conservado) | Suite backend |
+| "Sin telemetría" sin matices | README matizado (avatares de Google/GitHub/GitLab al iniciar sesión con ellos); origen Gravatar, sin uso, retirado de la CSP | Cabecera CSP servida: `img-src 'self' https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://gitlab.com`; CRUD por UI correcto sin texto en claro |
+
+Tests: suite backend 2509 passed en esta rama (2719 passed, 11 skipped con el PR #2 integrado); nuevos tests de los caminos que fallan cerrado (`tests/test_libreseal_legacy_credentials.py`, borrados REST bloqueados). Se hizo copia de seguridad de la instancia antes de las pruebas de borrado.
