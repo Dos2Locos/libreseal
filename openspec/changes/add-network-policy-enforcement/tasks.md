@@ -1,0 +1,17 @@
+# Tasks
+
+## 1. Verifier
+
+- [ ] 1.1 Implement IP/CIDR matching in `api/utils/access/network_policies.py` (clean-room, `ipaddress`) with unit tests for IPv4, IPv6, mapped addresses, invalid entries; verify with `pytest`
+- [ ] 1.2 Add `TRUSTED_PROXY_CIDRS` and make `get_client_ip` honour forwarded headers only from trusted proxies; tests for spoofed headers; verify with `pytest`
+- [ ] 1.3 Validate `allowed_ips` on create/update mutations; tests; verify with `pytest`
+
+## 2. Enablement
+
+- [ ] 2.1 Enable `Feature.NETWORK_POLICIES`, update edition/feature-gate tests and remove the "not available" badges in the UI; verify `pytest`, `tsc`, `yarn test`
+- [ ] 2.2 Document policies, trusted proxies and lock-out recovery in README
+
+## 3. Validation
+
+- [ ] 3.1 Local instance: policy allowing the test client → 200; policy excluding it → 403; global policy; spoofed `X-Forwarded-For` ignored; record in `validation.md`
+- [ ] 3.2 PR statement that no `ee/` source was consulted; `scripts/check-libreseal-guard.sh` passes
