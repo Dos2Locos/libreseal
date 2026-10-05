@@ -15,6 +15,7 @@ from api.utils.access.network_policies import (
     UNENFORCEABLE_MESSAGE,
     network_access_denied,
 )
+from backend.edition import Feature, feature_enabled
 from api.utils.access.org_resolution import resolve_org_id, resolve_via_model
 
 
@@ -444,7 +445,9 @@ class IPWhitelistMiddleware:
         ).first()
 
         # Non-members are rejected by the resolvers' own permission checks.
-        if network_access_denied(org, org_member):
+        if network_access_denied(org, org_member, self.get_client_ip(request)):
+            if feature_enabled(Feature.NETWORK_POLICIES):
+                raise IPRestrictedError(org.name)
             raise NetworkPolicyUnenforceableError(org.name)
 
         return next(root, info, **kwargs)

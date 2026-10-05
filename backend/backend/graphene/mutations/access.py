@@ -25,6 +25,7 @@ from django.utils import timezone
 import graphene
 from graphql import GraphQLError
 from backend.edition import Feature, feature_enabled, unavailable_message
+from api.utils.access.network_policies import validate_allowed_ips
 
 
 def _role_ceiling_error(user, organisation, permissions, current_role=None):
@@ -255,6 +256,13 @@ def _ensure_network_policies_available():
         raise GraphQLError(unavailable_message(Feature.NETWORK_POLICIES))
 
 
+def _validate_policy_ips(allowed_ips):
+    try:
+        validate_allowed_ips(allowed_ips)
+    except ValueError as e:
+        raise GraphQLError(str(e))
+
+
 class CreateNetworkAccessPolicyMutation(graphene.Mutation):
     class Arguments:
         name = graphene.String()
@@ -274,6 +282,7 @@ class CreateNetworkAccessPolicyMutation(graphene.Mutation):
             raise GraphQLError(
                 "You don't have the permissions required to create Network Access Policies in this organisation"
             )
+        _validate_policy_ips(allowed_ips)
         org_member = OrganisationMember.objects.get(
             organisation=org, user=user, deleted_at=None
         )
@@ -350,6 +359,7 @@ class UpdateNetworkAccessPolicyMutation(graphene.Mutation):
                 policy.name = policy_input.name
 
             if policy_input.allowed_ips is not None:
+                _validate_policy_ips(policy_input.allowed_ips)
                 policy.allowed_ips = policy_input.allowed_ips
 
             if policy_input.is_global is not None:

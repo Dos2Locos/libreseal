@@ -1,7 +1,8 @@
 # permissions.py
 
+from api.utils.access.ip import get_client_ip
 from api.utils.access.network_policies import (
-    UNENFORCEABLE_MESSAGE,
+    denial_message,
     network_access_denied,
 )
 from rest_framework.permissions import BasePermission
@@ -9,12 +10,15 @@ from rest_framework.permissions import BasePermission
 
 class IsIPAllowed(BasePermission):
     """
-    Denies access when network access policies apply to the caller, since
-    LibreSeal cannot enforce them (fail closed). Accounts without policies
-    are governed by RBAC alone.
+    Enforces network access policies: callers with applicable policies are
+    allowed only from a client IP covered by one of them. Accounts without
+    policies are governed by RBAC alone.
     """
 
-    message = UNENFORCEABLE_MESSAGE
+    message = "Access denied: a network access policy restricts access from your IP address."
+
+    def get_client_ip(self, request):
+        return get_client_ip(request)
 
     def has_permission(self, request, view):
         org_member = request.auth.get("org_member", None)
@@ -23,4 +27,7 @@ class IsIPAllowed(BasePermission):
         account = org_member or service_account
         org = account.organisation if account is not None else None
 
-        return not network_access_denied(org, account)
+        if network_access_denied(org, account, self.get_client_ip(request)):
+            self.message = denial_message()
+            return False
+        return True
