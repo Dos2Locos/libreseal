@@ -28,6 +28,9 @@ grep -qxF "real_ip_header CF-Connecting-IP;" "$REAL_IP_CONF" || fail "custom hea
 cp "$REAL_IP_CONF" "$WORK/before"
 NGINX_REAL_IP_FROM="10.0.0.0/8; include /etc/passwd" "$GEN" 2>/dev/null && fail "invalid entry accepted"
 NGINX_REAL_IP_FROM="10.0.0.0/8" NGINX_REAL_IP_HEADER='X-Real-IP;evil' "$GEN" 2>/dev/null && fail "invalid header accepted"
+for everyone in "0.0.0.0/0" "::/0" "10.0.0.0/8, 0.0.0.0/0"; do
+  NGINX_REAL_IP_FROM="$everyone" "$GEN" 2>/dev/null && fail "'$everyone' accepted (trusts every client)"
+done
 cmp -s "$REAL_IP_CONF" "$WORK/before" || fail "config modified on invalid input"
 [ ! -e "$REAL_IP_CONF.tmp" ] || fail "temporary file left behind"
 

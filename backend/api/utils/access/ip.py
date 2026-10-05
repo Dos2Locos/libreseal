@@ -1,3 +1,4 @@
+import logging
 from ipaddress import ip_address, ip_network
 
 from django.conf import settings
@@ -5,6 +6,8 @@ from django.conf import settings
 # Networks whose connections may set X-Real-IP / X-Forwarded-For. Defaults to
 # loopback and private ranges (the Docker Compose network where the bundled
 # nginx runs). Override with the TRUSTED_PROXY_CIDRS setting.
+logger = logging.getLogger(__name__)
+
 DEFAULT_TRUSTED_PROXY_CIDRS = (
     "127.0.0.0/8",
     "::1/128",
@@ -20,9 +23,15 @@ def _trusted_proxy_networks():
     networks = []
     for cidr in cidrs:
         try:
-            networks.append(ip_network(cidr.strip(), strict=False))
+            network = ip_network(cidr.strip(), strict=False)
         except ValueError:
+            logger.warning("Ignoring invalid TRUSTED_PROXY_CIDRS entry %r", cidr)
             continue
+        if network.prefixlen == 0:
+            # Trusting every address would let any client spoof its IP.
+            logger.warning("Ignoring TRUSTED_PROXY_CIDRS entry %r: trusts every client", cidr)
+            continue
+        networks.append(network)
     return networks
 
 

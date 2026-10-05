@@ -122,6 +122,19 @@ class TestTrustedProxies:
         assert get_client_ip(req) == "203.0.113.9"
 
 
+class TestTrustEverythingRejected:
+    @pytest.mark.parametrize("cidrs", [["0.0.0.0/0"], ["::/0"], ["0.0.0.0/0", "::/0"]])
+    def test_zero_prefix_entries_are_ignored(self, settings, cidrs):
+        settings.TRUSTED_PROXY_CIDRS = cidrs
+        req = _make_request(HTTP_X_REAL_IP="10.1.2.3", REMOTE_ADDR="198.51.100.7")
+        assert get_client_ip(req) == "198.51.100.7"
+
+    def test_other_entries_still_apply(self, settings):
+        settings.TRUSTED_PROXY_CIDRS = ["0.0.0.0/0", "198.51.100.0/24"]
+        req = _make_request(HTTP_X_REAL_IP="10.1.2.3", REMOTE_ADDR="198.51.100.7")
+        assert get_client_ip(req) == "10.1.2.3"
+
+
 class TestForwardedForChain:
     """X-Forwarded-For is resolved right to left (LibreSeal)."""
 

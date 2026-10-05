@@ -33,6 +33,10 @@ esac
         echo "real-ip.sh: invalid NGINX_REAL_IP_FROM entry '$entry'" >&2
         exit 1
         ;;
+      */0)
+        echo "real-ip.sh: NGINX_REAL_IP_FROM entry '$entry' would trust every client; list your proxies instead" >&2
+        exit 1
+        ;;
     esac
     echo "set_real_ip_from $entry;"
     found=1
