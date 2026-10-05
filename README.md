@@ -119,7 +119,7 @@ A restore needs the dump **and the same `.env`** (`SERVER_SECRET`, `SECRET_KEY`,
 | libreseal-cli | `132264f` (golang-sdk v2.4.1) | `scripts/e2e/cli-e2e.sh`: 29/29 |
 | libreseal-skills | `b88d772` | `docker-compose` commands, `libreseal-usage/examples/agent-demo.sh` in agent mode |
 
-Details: [`openspec/changes/establish-libreseal/validation.md`](openspec/changes/establish-libreseal/validation.md) (moves to `openspec/changes/archive/` once the change is archived).
+Details: [`validation.md`](openspec/changes/archive/2026-10-05-establish-libreseal/validation.md) of the archived `establish-libreseal` change.
 
 ## Relationship with Phase
 
