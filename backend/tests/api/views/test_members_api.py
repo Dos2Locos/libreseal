@@ -459,7 +459,7 @@ class TestPublicMembersViewInvite:
         )
         response = self.view(request)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "quota" in response.data["error"]
+        assert "limit" in response.data["error"]
 
     @patch("api.views.members.user_has_permission", return_value=False)
     @patch("api.views.members.PlanBasedRateThrottle.allow_request", return_value=True)

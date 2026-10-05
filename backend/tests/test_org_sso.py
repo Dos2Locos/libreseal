@@ -6,12 +6,31 @@ Uses unittest.TestCase with mocked ORM — no database required.
 
 import json
 import unittest
-from unittest.mock import patch, MagicMock, PropertyMock, call
+from unittest.mock import patch, MagicMock, call
 
 from django.core.cache import cache
 from django.test import RequestFactory
 from django.contrib.sessions.middleware import SessionMiddleware
 from rest_framework.test import APIRequestFactory, force_authenticate
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _enable_org_sso_for_tests():
+    """Org-level SSO is unavailable in LibreSeal (upstream adapters are
+    Enterprise-licensed), but the MIT orchestration code is kept for a future
+    clean-room adapter. Enable the feature flag here so that code stays tested;
+    ``tests/test_libreseal_org_sso_unavailable.py`` covers the default."""
+    from backend import edition
+
+    with patch.object(
+        edition,
+        "ENABLED_FEATURES",
+        edition.ENABLED_FEATURES | {edition.Feature.ENTERPRISE_SSO},
+    ):
+        yield
 
 
 class _ThrottleClearMixin:
@@ -913,188 +932,6 @@ class OrgSSOInviteRedirectTest(unittest.TestCase):
 
 # ---------------------------------------------------------------------------
 # Cloud-mode guard removal
-# ---------------------------------------------------------------------------
-
-class EntraIdTenantPinningTest(unittest.TestCase):
-    """`_validate_ms_id_token` pins `tid` to the configured tenant.
-    Without it, any Microsoft tenant could authenticate via /common."""
-
-    @patch("ee.authentication.sso.oidc.entraid.views.jwt")
-    def test_rejects_token_from_wrong_tenant(self, mock_jwt):
-        from ee.authentication.sso.oidc.entraid.views import (
-            _validate_ms_id_token,
-        )
-        from allauth.socialaccount.providers.oauth2.client import OAuth2Error
-
-        # JWKS resolves; jwt.decode returns claims for the WRONG tenant.
-        mock_jwt.PyJWKClient.return_value.get_signing_key_from_jwt.return_value = (
-            MagicMock(key="signing-key")
-        )
-        mock_jwt.decode.return_value = {
-            "tid": "ATTACKER-TENANT-UUID",
-            "nonce": "n",
-        }
-        # Real exception class so the inner try/except matches correctly.
-        import jwt as real_jwt
-        mock_jwt.InvalidTokenError = real_jwt.InvalidTokenError
-
-        with self.assertRaises(OAuth2Error) as ctx:
-            _validate_ms_id_token(
-                "fake.token",
-                audience="phase-console",
-                expected_tenant_id="REAL-TENANT-UUID",
-                expected_nonce="n",
-            )
-        self.assertIn("tenant mismatch", str(ctx.exception).lower())
-
-    @patch("ee.authentication.sso.oidc.entraid.views.jwt")
-    def test_accepts_token_from_correct_tenant(self, mock_jwt):
-        from ee.authentication.sso.oidc.entraid.views import (
-            _validate_ms_id_token,
-        )
-
-        mock_jwt.PyJWKClient.return_value.get_signing_key_from_jwt.return_value = (
-            MagicMock(key="signing-key")
-        )
-        mock_jwt.decode.return_value = {
-            "tid": "real-tenant-uuid",
-            "nonce": "n",
-        }
-        import jwt as real_jwt
-        mock_jwt.InvalidTokenError = real_jwt.InvalidTokenError
-
-        claims = _validate_ms_id_token(
-            "fake.token",
-            audience="phase-console",
-            expected_tenant_id="REAL-TENANT-UUID",  # case-insensitive match
-            expected_nonce="n",
-        )
-        self.assertEqual(claims["tid"], "real-tenant-uuid")
-
-    def test_refuses_when_no_tenant_configured(self):
-        """Fail-closed when tenant config is missing."""
-        from ee.authentication.sso.oidc.entraid.views import (
-            _validate_ms_id_token,
-        )
-        from allauth.socialaccount.providers.oauth2.client import OAuth2Error
-
-        with self.assertRaises(OAuth2Error) as ctx:
-            _validate_ms_id_token(
-                "fake.token",
-                audience="phase-console",
-                expected_tenant_id=None,
-                expected_nonce="n",
-            )
-        self.assertIn("tenant configuration missing", str(ctx.exception).lower())
-
-
-class EntraIdTenantResolutionTest(unittest.TestCase):
-    """`_resolve_expected_tenant_id`: org config → fallback to env."""
-
-    @patch("ee.authentication.sso.oidc.entraid.views.os")
-    def test_falls_back_to_env_when_no_org_config_in_session(self, mock_os):
-        from ee.authentication.sso.oidc.entraid.views import (
-            _resolve_expected_tenant_id,
-        )
-        mock_os.getenv.return_value = "env-tenant-uuid"
-
-        request = MagicMock()
-        request.session = {}  # No sso_org_config_id
-
-        self.assertEqual(_resolve_expected_tenant_id(request), "env-tenant-uuid")
-        mock_os.getenv.assert_called_with("ENTRA_ID_OIDC_TENANT_ID")
-
-    @patch("api.utils.sso.get_org_sso_config")
-    def test_reads_tenant_from_org_config_when_present(self, mock_get_org):
-        from ee.authentication.sso.oidc.entraid.views import (
-            _resolve_expected_tenant_id,
-        )
-        provider = MagicMock()
-        org_config = {"tenant_id": "org-tenant-uuid", "client_id": "x"}
-        mock_get_org.return_value = (provider, org_config)
-
-        request = MagicMock()
-        request.session = {"sso_org_config_id": "cfg-1"}
-
-        self.assertEqual(_resolve_expected_tenant_id(request), "org-tenant-uuid")
-        mock_get_org.assert_called_once_with("cfg-1")
-
-
-class CloudModeGuardRemovalTest(unittest.TestCase):
-    """Verify EE adapters no longer block on APP_HOST=cloud."""
-
-    @patch("ee.authentication.sso.oidc.entraid.views._resolve_expected_tenant_id")
-    @patch("ee.authentication.sso.oidc.entraid.views._validate_ms_id_token")
-    @patch("ee.authentication.sso.oidc.entraid.views.settings")
-    @patch("ee.authentication.sso.oidc.entraid.views.ActivatedPhaseLicense")
-    @patch("ee.authentication.sso.oidc.entraid.views.send_login_email")
-    @patch("ee.authentication.sso.oidc.entraid.views.get_adapter")
-    def test_entra_adapter_works_on_cloud(
-        self, mock_get_adapter, mock_send_email, mock_license, mock_settings,
-        mock_validate_token, mock_resolve_tenant,
-    ):
-        from ee.authentication.sso.oidc.entraid.views import CustomMicrosoftGraphOAuth2Adapter
-
-        mock_settings.APP_HOST = "cloud"
-        mock_resolve_tenant.return_value = "00000000-0000-0000-0000-000000000abc"
-
-        # Mock a successful ID-token validation so the adapter proceeds.
-        mock_validate_token.return_value = {
-            "email": "test@example.com",
-            "nonce": "n",
-        }
-
-        # Mock the response from Microsoft Graph
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "id": "user-123",
-            "displayName": "Test User",
-            "mail": "test@example.com",
-        }
-        mock_get_adapter.return_value.get_requests_session.return_value.get.return_value = mock_response
-
-        # Mock get_provider and create adapter properly
-        mock_social_login = MagicMock()
-        mock_social_login.user.email = "test@example.com"
-        mock_social_login.account.extra_data = {"name": "Test User"}
-
-        # Patch profile_url property on the class since it's a class attribute/property
-        with patch.object(
-            CustomMicrosoftGraphOAuth2Adapter, "profile_url",
-            new_callable=PropertyMock, return_value="https://graph.microsoft.com/v1.0/me"
-        ), patch.object(
-            CustomMicrosoftGraphOAuth2Adapter, "profile_url_params",
-            new_callable=PropertyMock, return_value={}
-        ):
-            adapter = CustomMicrosoftGraphOAuth2Adapter.__new__(CustomMicrosoftGraphOAuth2Adapter)
-            adapter.get_provider = MagicMock()
-            adapter.get_provider.return_value.sociallogin_from_response.return_value = mock_social_login
-
-            mock_token = MagicMock()
-            mock_token.token = "fake-access-token"
-            mock_token.id_token = "fake.id.token"
-
-            mock_request = MagicMock()
-            mock_request.session.get.return_value = "n"
-
-            mock_app = MagicMock()
-            mock_app.client_id = "phase-console"
-
-            # Should NOT raise OAuth2Error — cloud mode is no longer blocked
-            result = adapter.complete_login(mock_request, mock_app, mock_token)
-            self.assertIsNotNone(result)
-            # Validation must have been called with client_id, nonce, and
-            # the configured tenant_id pinning.
-            mock_validate_token.assert_called_once_with(
-                "fake.id.token",
-                audience="phase-console",
-                expected_tenant_id="00000000-0000-0000-0000-000000000abc",
-                expected_nonce="n",
-            )
-
-
-# ---------------------------------------------------------------------------
-# SSO config helpers
 # ---------------------------------------------------------------------------
 
 class SSOConfigHelperTest(unittest.TestCase):

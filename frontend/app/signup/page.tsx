@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: formatTitle('Sign up'),
-    description: 'Create your Phase account',
+    description: 'Create your LibreSeal account',
   }
 }
 

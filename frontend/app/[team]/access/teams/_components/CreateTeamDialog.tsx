@@ -1,6 +1,6 @@
 'use client'
 
-import { ApiOrganisationPlanChoices, RoleType } from '@/apollo/graphql'
+import { RoleType } from '@/apollo/graphql'
 import { userCanGrantRole, userHasGlobalAccess } from '@/utils/access/permissions'
 import { isHandledGraphQLError } from '@/utils/errors'
 import GenericDialog from '@/components/common/GenericDialog'
@@ -18,8 +18,6 @@ import { FaChevronDown, FaPlus, FaUserShield, FaRobot } from 'react-icons/fa'
 import { Listbox } from '@headlessui/react'
 import clsx from 'clsx'
 import { toast } from 'react-toastify'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
 
 const RoleSelector = ({
   value,
@@ -98,11 +96,9 @@ const RoleSelector = ({
 export const CreateTeamDialog = () => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
 
-  const upsell = organisation?.plan === ApiOrganisationPlanChoices.Fr
-
   const { data: roleData } = useQuery(GetRoles, {
     variables: { orgId: organisation?.id },
-    skip: !organisation || upsell,
+    skip: !organisation,
   })
 
   const [createTeam, { loading: createPending }] = useMutation(CreateTeamOp)
@@ -156,18 +152,6 @@ export const CreateTeamDialog = () => {
       if (!isHandledGraphQLError(error)) toast.error('Something went wrong')
     }
   }
-
-  if (upsell)
-    return (
-      <UpsellDialog
-        title="Upgrade to Pro to create Teams"
-        buttonLabel={
-          <>
-            <FaPlus /> Create Team <PlanLabel plan={ApiOrganisationPlanChoices.Pr} />
-          </>
-        }
-      />
-    )
 
   return (
     <GenericDialog

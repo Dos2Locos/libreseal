@@ -14,7 +14,6 @@ import { userHasPermission } from '@/utils/access/permissions'
 import { generateBreadcrumbs, generatePageTitle, NavigationContext } from '@/utils/navigation'
 
 import { Button } from '../common/Button'
-import { StatusIndicator } from '../common/StatusIndicator'
 import { LogoMark } from '../common/LogoMark'
 import CommandPalette from '../common/CommandPalette'
 import UserMenu from '../UserMenu'
@@ -111,8 +110,11 @@ export const NavBar = () => {
       </div>
 
       <div className="flex gap-3 items-center justify-end shrink-0">
-        <StatusIndicator />
-        <Link href="https://docs.phase.dev" target="_blank" className="hidden lg:block">
+        <Link
+          href="https://github.com/Dos2Locos/libreseal#readme"
+          target="_blank"
+          className="hidden lg:block"
+        >
           <Button variant="secondary">Docs</Button>
         </Link>
         <UserMenu />

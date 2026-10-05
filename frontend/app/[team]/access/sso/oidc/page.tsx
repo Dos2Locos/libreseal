@@ -20,9 +20,8 @@ import CopyButton from '@/components/common/CopyButton'
 import { toast } from 'react-toastify'
 import { relativeTimeFromDates } from '@/utils/time'
 import { Avatar } from '@/components/common/Avatar'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
-import { ApiOrganisationPlanChoices } from '@/apollo/graphql'
+import { UnavailableFeature } from '@/components/common/UnavailableFeature'
+import { useFeature } from '@/hooks/useFeature'
 import { FaBan, FaCheckCircle, FaShieldAlt, FaTrashAlt, FaPen, FaSignInAlt } from 'react-icons/fa'
 
 const PROVIDER_INFO = {
@@ -166,41 +165,16 @@ export default function OIDCPage(props: { params: Promise<{ team: string }> }) {
     enforceDialogRef.current?.openModal()
   }
 
-  // State 1: Plan gate (checked before permissions, so non-admin users
-  const planAllowsSSO = organisation?.plan === ApiOrganisationPlanChoices.En
+  // State 1: Feature gate (checked before permissions, so non-admin users
+  const ssoAvailable = useFeature('enterprise_sso')
 
-  if (organisation && !planAllowsSSO) {
+  if (organisation && !ssoAvailable) {
     return (
-      <div className="space-y-8 text-zinc-900 dark:text-zinc-100">
-        <div>
-          <h2 className="text-base font-medium">OIDC Providers</h2>
-          <p className="text-neutral-500 text-sm">
-            Configure OIDC single sign-on for your organisation.
-          </p>
-        </div>
-        <EmptyState
-          title="OIDC SSO is available on the Enterprise tier"
-          subtitle="Upgrade your organisation to configure OIDC single sign-on with providers like Microsoft Entra ID and Okta."
-          graphic={
-            <div className="text-neutral-300 dark:text-neutral-700 text-7xl text-center">
-              <FaShieldAlt />
-            </div>
-          }
-        >
-          <div className="pt-2">
-            <UpsellDialog
-              title="Upgrade to Enterprise to configure SSO"
-              targetPlan={ApiOrganisationPlanChoices.En}
-              buttonLabel={
-                <span className="flex items-center gap-2">
-                  Upgrade
-                  <PlanLabel plan={ApiOrganisationPlanChoices.En} />
-                </span>
-              }
-            />
-          </div>
-        </EmptyState>
-      </div>
+      <UnavailableFeature
+        feature="enterprise_sso"
+        title="OIDC Providers"
+        description="Organisation-level OIDC single sign-on (Microsoft Entra ID, Okta). Instance-wide sign-in with Authentik, Authelia, Google, GitHub or GitLab is configured through environment variables."
+      />
     )
   }
 
@@ -601,7 +575,7 @@ export default function OIDCPage(props: { params: Promise<{ team: string }> }) {
               <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
                 <p>
                   You will be redirected to your identity provider to complete a test
-                  authentication. Once complete, you will be sent back to Phase Console.
+                  authentication. Once complete, you will be sent back to LibreSeal.
                 </p>
                 <Alert variant="warning" icon>
                   <p>

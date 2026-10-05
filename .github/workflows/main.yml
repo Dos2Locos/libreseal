@@ -1,50 +1,68 @@
-name: CI/CD Pipeline
+name: LibreSeal CI
 
+# Tests and builds only. Publishing images or releases is intentionally not
+# configured yet (separate change); nothing is pushed to any registry.
 on:
   pull_request:
     branches: [main]
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
-  determine_version:
+  guard:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.set_version.outputs.version }}
-      is_pr: ${{ steps.set_version.outputs.is_pr }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Set version and PR flag
-        id: set_version
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "version=$(git rev-parse --short ${{ github.event.pull_request.head.sha }} | cut -c 1-7)" >> $GITHUB_OUTPUT
-            echo "is_pr=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-            echo "is_pr=false" >> $GITHUB_OUTPUT
-          fi
-
-  frontend:
-    needs: determine_version
-    uses: ./.github/workflows/frontend.yml
-    with:
-      version: ${{ needs.determine_version.outputs.version }}
-      is_pr: ${{ needs.determine_version.outputs.is_pr }}
-    secrets: inherit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: LibreSeal invariants (no ee/, no billing or telemetry deps)
+        run: scripts/check-libreseal-guard.sh
+      - name: Deployment script tests
+        run: scripts/tests/test-libreseal-init.sh
 
   backend:
-    needs: determine_version
-    uses: ./.github/workflows/backend.yml
-    with:
-      version: ${{ needs.determine_version.outputs.version }}
-      is_pr: ${{ needs.determine_version.outputs.is_pr }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt -c constraints.txt
+          pip install -r dev-requirements.txt
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit -p .
+      - name: Run tests
+        working-directory: frontend
+        run: yarn test
+      - name: Run lint
+        working-directory: frontend
+        run: yarn lint
+
+  compose-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build images from source
+        run: |
+          scripts/libreseal-init.sh
+          docker compose build

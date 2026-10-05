@@ -1,3 +1,5 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
 import logging
 
 from api.auth import PhaseTokenAuthentication
@@ -169,21 +171,21 @@ class PublicAppsView(APIView):
                 seen.add(lower)
             if not can_use_custom_envs(org):
                 return Response(
-                    {"error": "Custom environments are not available on the Free plan."},
+                    {"error": "Custom environments are not available."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
             # Enforce the per-app environment quota (Free=3, Pro=10,
             # Enterprise/licensed=unlimited) on the requested environment list.
             if not can_add_environments(org, len(custom_envs)):
                 return Response(
-                    {"error": "Environment quota exceeded for this app's plan."},
+                    {"error": "Environment limit reached for this app."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
         # --- Check quota ---
         if not can_add_app(org):
             return Response(
-                {"error": "App quota exceeded for this organisation's plan."},
+                {"error": "App limit reached for this organisation."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -419,13 +421,20 @@ class PublicAppDetailView(APIView):
         actor_type, actor_id, actor_meta = get_actor_info(request)
         ip_address, user_agent = get_resolver_request_meta(request)
 
-        audit_app_cascade_envs(
-            app, actor_type, actor_id, actor_meta, ip_address, user_agent
-        )
+        try:
+            with transaction.atomic():
+                audit_app_cascade_envs(
+                    app, actor_type, actor_id, actor_meta, ip_address, user_agent
+                )
 
-        app.wrapped_key_share = ""
-        app.save()
-        app.delete()
+                app.wrapped_key_share = ""
+                app.save()
+                app.delete()
+        except FeatureUnavailable:
+            return Response(
+                {"error": cascade_blocked_message("app")},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         log_audit_event(
             organisation=org,

@@ -70,7 +70,7 @@ const WORKLOAD_IDENTITY_PROVIDER_REGEX =
 
 export const GCP_POOL_ID = 'phase'
 
-/** Phase features that authenticate with a Google Cloud credential, with the
+/** LibreSeal features that authenticate with a Google Cloud credential, with the
  * APIs they call and the roles they need on the credential's principal. The
  * setup UI shows a tab per entry, so a new feature (dynamic secrets,
  * rotation) is one more entry. */
@@ -101,10 +101,10 @@ export const parseWorkloadIdentityProvider = (value: string) => {
 }
 
 /** The provider ID for a new credential: unique per signing key, so several
- * Phase credentials can share one pool. */
+ * LibreSeal credentials can share one pool. */
 export const gcpProviderIdForKey = (keyId: string) => `phase-${keyId.slice(0, 8)}`
 
-/** The provider's resource name. Phase picks the pool and provider IDs, so
+/** The provider's resource name. LibreSeal picks the pool and provider IDs, so
  * the project number is the only part it needs from the user. */
 export const workloadIdentityProviderName = (
   projectNumber: string,
@@ -175,14 +175,14 @@ ${enableApisCommand('PROJECT_NUMBER', options.integration, [
 # gcloud's Workload Identity commands take the project ID, not the number.
 PROJECT_ID="$(gcloud projects describe "$PROJECT_NUMBER" --format='value(projectId)')"
 
-# Phase's public key for this credential.
+# LibreSeal's public key for this credential.
 printf '%s\\n' ${shellQuote(options.jwks)} > phase-jwks.json
 
 POOL_STATE="$(gcloud iam workload-identity-pools describe "$POOL_ID" --location=global \\
   --project="$PROJECT_ID" --format='value(state)' 2>/dev/null || true)"
 if [ -z "$POOL_STATE" ]; then
   gcloud iam workload-identity-pools create "$POOL_ID" --location=global \\
-    --project="$PROJECT_ID" --display-name="Phase"
+    --project="$PROJECT_ID" --display-name="LibreSeal"
 elif [ "$POOL_STATE" = "DELETED" ]; then
   gcloud iam workload-identity-pools undelete "$POOL_ID" --location=global \\
     --project="$PROJECT_ID"
@@ -198,20 +198,20 @@ fi
 if [ -z "$PROVIDER_STATE" ]; then ACTION=create-oidc; else ACTION=update-oidc; fi
 gcloud iam workload-identity-pools providers "$ACTION" "$PROVIDER_ID" \\
   --location=global --workload-identity-pool="$POOL_ID" --project="$PROJECT_ID" \\
-  --display-name="Phase" --issuer-uri="$ISSUER" --jwk-json-path=phase-jwks.json \\
+  --display-name="LibreSeal" --issuer-uri="$ISSUER" --jwk-json-path=phase-jwks.json \\
   --attribute-mapping="google.subject=assertion.sub" \\
   --attribute-condition="assertion.sub == \\"$SUBJECT\\""
 
 ${grantRolesCommands('PROJECT_ID', options.integration)}
 
-echo "Done: Google Cloud now trusts this Phase integration."
+echo "Done: Google Cloud now trusts this LibreSeal integration."
 )
 `
 
 /**
  * A script that lets a project's Secret Manager service agent use a CMEK
  * key. Google encrypts with the key as that agent, not as the caller, so
- * Phase's principal never needs access to it. Safe to re-run.
+ * LibreSeal's principal never needs access to it. Safe to re-run.
  */
 export const gcpKmsGrantScript = (options: { project: string; kmsKeyName: string }) => `(
 set -euo pipefail

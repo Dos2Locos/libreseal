@@ -1,9 +1,10 @@
+import { UnavailableBadge } from '@/components/common/UnavailableFeature'
+import { useFeature } from '@/hooks/useFeature'
 import {
   ServiceAccountType,
   OrganisationMemberType,
   NetworkAccessPolicyType,
   AccountTypeEnum,
-  ApiOrganisationPlanChoices,
 } from '@/apollo/graphql'
 import GenericDialog from '@/components/common/GenericDialog'
 import { GetServiceAccountDetail } from '@/graphql/queries/service-accounts/getServiceAccountDetail.gql'
@@ -21,10 +22,7 @@ import { Button } from '@/components/common/Button'
 import { toast } from 'react-toastify'
 import { IPChip } from '@/app/[team]/access/network/_components/IPChip'
 import { CreateNetworkAccessPolicyDialog } from '@/app/[team]/access/network/_components/CreateNetworkPolicyDialog'
-import { PlanLabel } from '../settings/organisation/PlanLabel'
-import { UpsellDialog } from '../settings/organisation/UpsellDialog'
 import { isClientIpAllowed } from '@/utils/access/ip'
-import { isCloudHosted } from '@/utils/appConfig'
 
 export const UpdateAccountNetworkPolicies = ({
   account,
@@ -32,6 +30,7 @@ export const UpdateAccountNetworkPolicies = ({
   account: ServiceAccountType | OrganisationMemberType
 }) => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
+  const networkPoliciesAvailable = useFeature('network_policies')
 
   const dialogRef = useRef<{ closeModal: () => void }>(null)
 
@@ -119,18 +118,11 @@ export const UpdateAccountNetworkPolicies = ({
 
   if (!organisation) return <></>
 
-  if (organisation.plan === ApiOrganisationPlanChoices.Fr)
+  if (!networkPoliciesAvailable)
     return (
-      <UpsellDialog
-        buttonLabel={
-          <>
-            <FaNetworkWired /> Manage policy{' '}
-            <PlanLabel
-              plan={isCloudHosted() ? ApiOrganisationPlanChoices.Pr : ApiOrganisationPlanChoices.En}
-            />{' '}
-          </>
-        }
-      />
+      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
+        <FaNetworkWired /> Manage policy <UnavailableBadge />
+      </Button>
     )
 
   return (

@@ -18,7 +18,7 @@ export const getHostname = () => {
 
 
 export const getApiHost = () => {
-  return isCloudHosted() ? 'https://api.phase.dev' : `${getHostname()}/service/public`
+  return `${getHostname()}/service/public`
 }
 
 export const getHealth = async (baseUrl: string) => {

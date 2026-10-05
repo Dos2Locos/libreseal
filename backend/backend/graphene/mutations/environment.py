@@ -1,3 +1,5 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
 import re
 from django.utils import timezone
 from django.db import transaction
@@ -168,7 +170,7 @@ class CreateEnvironmentMutation(graphene.Mutation):
         )
         if is_custom_env and not can_use_custom_envs(app.organisation):
             raise GraphQLError(
-                "Custom environments are not available on the Free plan. Upgrade to Pro to create custom environments."
+                "Custom environments are not available."
             )
 
         if not can_add_environment(app):
@@ -421,7 +423,11 @@ class DeleteEnvironmentMutation(graphene.Mutation):
         env_name = environment.name
         env_id = environment.id
 
-        environment.delete()
+        try:
+            with transaction.atomic():
+                environment.delete()
+        except FeatureUnavailable:
+            raise GraphQLError(cascade_blocked_message("environment"))
 
         actor_type, actor_id, actor_metadata = get_actor_info_from_graphql(info, organisation=org)
         ip_address, user_agent = get_resolver_request_meta(info.context)
@@ -892,7 +898,11 @@ class DeleteSecretFolderMutation(graphene.Mutation):
                     "permission to delete rotating secrets to remove it."
                 )
 
-        folder.delete()
+        try:
+            with transaction.atomic():
+                folder.delete()
+        except FeatureUnavailable:
+            raise GraphQLError(cascade_blocked_message("folder"))
 
         return DeleteSecretFolderMutation(ok=True)
 

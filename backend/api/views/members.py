@@ -403,33 +403,11 @@ class PublicMemberDetailView(APIView):
         member_email = member.user.email
         member_role = member.role.name
 
-        # SCIM-managed members: route through the SCIM deactivation flow
-        # (revokes team env keys, wipes crypto, soft-deletes the OM, hard-
-        # deletes the SCIMUser row so the next IdP sync re-adopts cleanly).
-        # The flow itself blocks Owner deactivation; everything else is
-        # RBAC-gated by the permission check above.
-        scim_users = list(member.scimuser_set.all())
-        if scim_users:
-            from ee.authentication.scim.exceptions import SCIMDeactivationForbidden
-            from ee.authentication.scim.utils import deactivate_scim_user
+        # SCIM provisioning is not available in LibreSeal: members that were
+        # SCIM-provisioned in a migrated database are removed like any other.
+        member.deleted_at = timezone.now()
+        member.save()
 
-            for scim_user in scim_users:
-                try:
-                    deactivate_scim_user(scim_user)
-                except SCIMDeactivationForbidden as e:
-                    return Response(
-                        {"error": str(e)},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-                scim_user.delete()
-        else:
-            member.deleted_at = timezone.now()
-            member.save()
-
-        if CLOUD_HOSTED:
-            from ee.billing.stripe import update_stripe_subscription_seats
-
-            update_stripe_subscription_seats(org)
 
         actor_type, actor_id, actor_meta = get_actor_info(request)
         ip_address, user_agent = get_resolver_request_meta(request)
@@ -926,7 +904,7 @@ class PublicInvitesView(APIView):
         # Quota check
         if not can_add_account(org, 1):
             return Response(
-                {"error": "Member quota exceeded for this organisation's plan."},
+                {"error": "Member limit reached for this organisation."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

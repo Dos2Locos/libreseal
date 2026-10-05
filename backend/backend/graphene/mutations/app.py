@@ -1,3 +1,5 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
 from backend.api.kv import delete, purge
 from backend.graphene.mutations.environment import (
     EnvironmentKeyInput,
@@ -305,13 +307,17 @@ class DeleteAppMutation(graphene.Mutation):
         actor_type, actor_id, actor_metadata = get_actor_info_from_graphql(info, organisation=app_org)
         ip_address, user_agent = get_resolver_request_meta(info.context)
 
-        audit_app_cascade_envs(
-            app, actor_type, actor_id, actor_metadata, ip_address, user_agent
-        )
+        try:
+            with transaction.atomic():
+                audit_app_cascade_envs(
+                    app, actor_type, actor_id, actor_metadata, ip_address, user_agent
+                )
 
-        app.wrapped_key_share = ""
-        app.save()
-        app.delete()
+                app.wrapped_key_share = ""
+                app.save()
+                app.delete()
+        except FeatureUnavailable:
+            raise GraphQLError(cascade_blocked_message("app"))
 
         log_audit_event(
             organisation=app_org,

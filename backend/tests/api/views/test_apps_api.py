@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from contextlib import nullcontext
 from unittest.mock import Mock, MagicMock, patch, PropertyMock
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework import status
@@ -434,7 +435,7 @@ class TestPublicAppsViewCreate:
         )
         response = self.view(request)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "Free plan" in response.data["error"]
+        assert "not available" in response.data["error"]
 
     @patch("api.views.apps.AppSerializer")
     @patch("api.views.apps.create_environment")
@@ -497,7 +498,7 @@ class TestPublicAppsViewCreate:
         )
         response = self.view(request)
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert "quota" in response.data["error"].lower()
+        assert "limit" in response.data["error"].lower()
         mock_create_env.assert_not_called()
 
 
@@ -655,6 +656,12 @@ class TestPublicAppDetailViewUpdate:
 class TestPublicAppDetailViewDelete:
 
     @pytest.fixture(autouse=True)
+    def _no_db_transaction(self):
+        # Deletes run inside transaction.atomic(); these tests use mocks only.
+        with patch("api.views.apps.transaction.atomic", return_value=nullcontext()):
+            yield
+
+    @pytest.fixture(autouse=True)
     def setup(self, settings):
         settings.DATABASES = {
             "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
@@ -683,6 +690,30 @@ class TestPublicAppDetailViewDelete:
         # exist when the helper enumerates them.
         cascade_audit.assert_called_once()
         assert cascade_audit.call_args.args[0] is self.app
+
+    @patch("api.views.apps.CLOUD_HOSTED", False)
+    @patch("api.views.apps.user_has_permission", return_value=True)
+    @patch("api.views.apps.PlanBasedRateThrottle.allow_request", return_value=True)
+    @patch("api.views.apps.IsIPAllowed.has_permission", return_value=True)
+    def test_delete_app_with_live_legacy_credentials_returns_409(self, _ip, _throttle, _perm):
+        """LibreSeal: a cascade blocked by live migrated credentials returns a
+        clear 409 and runs inside a transaction, so the cleared key share and
+        the cascade audit events are rolled back."""
+        from backend.edition import Feature, FeatureUnavailable
+
+        self.app.delete.side_effect = FeatureUnavailable(Feature.SECRET_ROTATION)
+        request = _build_detail_request(
+            "delete", f"/public/v1/apps/{self.app.id}/", self.app,
+        )
+        with patch("api.views.apps.audit_app_cascade_envs"), patch(
+            "api.views.apps.transaction.atomic", return_value=MagicMock()
+        ) as atomic, patch("api.views.apps.log_audit_event") as audit:
+            response = self.view(request, app_id=self.app.id)
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert "libreseal_remove_legacy_credentials" in response.data["error"]
+        atomic.assert_called_once()
+        audit.assert_not_called()
 
     @patch("api.views.apps.user_has_permission", return_value=False)
     @patch("api.views.apps.PlanBasedRateThrottle.allow_request", return_value=True)

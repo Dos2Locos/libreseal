@@ -256,7 +256,7 @@ def _resolve_team_for_sa_create(request, org, team_id, sa_role):
     """
     if not can_use_teams(org):
         return None, Response(
-            {"error": "Teams are not available on your organisation's plan."},
+            {"error": "Teams are not available."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -563,10 +563,6 @@ class PublicServiceAccountsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if CLOUD_HOSTED:
-            from ee.billing.stripe import update_stripe_subscription_seats
-
-            update_stripe_subscription_seats(org)
 
         # --- Mint an initial token (token_name already validated above) ---
         created_by = None
@@ -787,10 +783,6 @@ class PublicServiceAccountDetailView(APIView):
         org = sa.organisation
         sa.delete()
 
-        if CLOUD_HOSTED:
-            from ee.billing.stripe import update_stripe_subscription_seats
-
-            update_stripe_subscription_seats(org)
 
         # Audit log
         actor_type, actor_id, actor_meta = get_actor_info(request)

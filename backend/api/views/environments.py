@@ -1,3 +1,6 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
+from django.db import transaction
 import re
 
 from api.auth import PhaseTokenAuthentication
@@ -109,13 +112,13 @@ class PublicEnvironmentsView(APIView):
 
         if not can_add_environment(app):
             return Response(
-                {"error": "Environment quota exceeded for this app's plan."},
+                {"error": "Environment limit reached for this app."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -261,7 +264,7 @@ class PublicEnvironmentDetailView(APIView):
 
         if env.env_type not in ("dev", "staging", "prod") and not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -316,12 +319,19 @@ class PublicEnvironmentDetailView(APIView):
 
         if env.env_type not in ("dev", "staging", "prod") and not can_use_custom_envs(org):
             return Response(
-                {"error": "Custom environments are not available on the Free plan."},
+                {"error": "Custom environments are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         env_name = env.name
-        env.delete()
+        try:
+            with transaction.atomic():
+                env.delete()
+        except FeatureUnavailable:
+            return Response(
+                {"error": cascade_blocked_message("environment")},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # Audit log
         actor_type, actor_id, actor_meta = get_actor_info(request)

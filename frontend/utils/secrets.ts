@@ -1,6 +1,5 @@
 import {
   ApiSecretTypeChoices,
-  DynamicSecretType,
   EnvironmentType,
   SecretTagType,
   SecretType,
@@ -524,9 +523,18 @@ export const processEnvFile = (
   return newSecrets
 }
 
+/**
+ * Minimal shape of a dynamic secret for key-collision checks. Dynamic secrets
+ * are not available in LibreSeal, but the helper keeps accepting this shape so
+ * callers and tests stay source-compatible with upstream.
+ */
+export type DynamicSecretLike = {
+  keyMap?: ({ keyName?: string | null } | null)[] | null
+}
+
 export const duplicateKeysExist = (
   secrets: SecretType[] | AppSecret[],
-  dynamicSecrets: DynamicSecretType[] = []
+  dynamicSecrets: DynamicSecretLike[] = []
 ): boolean => {
   const keySet = new Set<string>()
 

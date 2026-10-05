@@ -2,7 +2,6 @@ import { ProviderType } from '@/apollo/graphql'
 import GetProviderList from '@/graphql/queries/syncing/getProviders.gql'
 import GetSavedCredentials from '@/graphql/queries/syncing/getSavedCredentials.gql'
 import SaveNewProviderCreds from '@/graphql/mutations/syncing/saveNewProviderCreds.gql'
-import ValidateRotationCredentials from '@/graphql/mutations/syncing/validateRotationCredentials.gql'
 import { useState, useEffect, useContext, Fragment } from 'react'
 import { FaArrowRight } from 'react-icons/fa'
 import { Button } from '../common/Button'
@@ -67,9 +66,7 @@ export const CreateProviderCredentials = (props: {
 
   const { data: providersData } = useQuery(GetProviderList)
   const [saveNewCreds] = useMutation(SaveNewProviderCreds)
-  const [validateRotationCreds] = useMutation(ValidateRotationCredentials)
 
-  const ROTATION_PROVIDER_IDS = ['litellm', 'openai']
 
   const [validating, setValidating] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -117,23 +114,23 @@ export const CreateProviderCredentials = (props: {
 
   const docsLink = (provider: ProviderType) => {
     if (provider.id === 'cloudflare')
-      return 'https://docs.phase.dev/integrations/platforms/cloudflare-pages'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'aws' || provider.id === 'aws_assume_role')
-      return 'https://docs.phase.dev/integrations/platforms/aws-secrets-manager'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'hashicorp_vault')
-      return 'https://docs.phase.dev/integrations/platforms/hashicorp-vault'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'hashicorp_nomad')
-      return 'https://docs.phase.dev/integrations/platforms/hashicorp-nomad'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'github')
-      return 'https://docs.phase.dev/integrations/platforms/github-actions'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'gitlab')
-      return 'https://docs.phase.dev/integrations/platforms/gitlab-ci'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'railway')
-      return 'https://docs.phase.dev/integrations/platforms/railway'
-    else if (provider.id === 'vercel') return 'https://docs.phase.dev/integrations/platforms/vercel'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
+    else if (provider.id === 'vercel') return 'https://github.com/Dos2Locos/libreseal#readme'
     else if (provider.id === 'gcp')
-      return 'https://docs.phase.dev/integrations/platforms/gcp-secret-manager'
-    else return 'https://docs.phase.dev/integrations'
+      return 'https://github.com/Dos2Locos/libreseal#readme'
+    else return 'https://github.com/Dos2Locos/libreseal#readme'
   }
 
   const handleClickBack = () => {
@@ -156,32 +153,6 @@ export const CreateProviderCredentials = (props: {
       providersData.serverPublicKey
     )
     const encryptedCredentials = JSON.stringify(encryptedCredentialsObj)
-
-    if (ROTATION_PROVIDER_IDS.includes(provider.id)) {
-      setValidating(true)
-      try {
-        const { data: validationData } = await validateRotationCreds({
-          variables: {
-            organisationId: organisation!.id,
-            providerId: provider.id,
-            credentials: encryptedCredentials,
-          },
-        })
-        const result = validationData?.validateRotationCredentials
-        if (!result?.valid) {
-          setValidationError(
-            result?.error ||
-              'The provider rejected these credentials. Verify the key is correct.'
-          )
-          return
-        }
-      } catch (err) {
-        setValidationError('Could not reach the provider to validate credentials.')
-        return
-      } finally {
-        setValidating(false)
-      }
-    }
 
     await saveNewCreds({
       variables: {

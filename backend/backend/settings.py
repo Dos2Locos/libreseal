@@ -3,7 +3,6 @@ from pathlib import Path
 from urllib.parse import quote as urlquote
 import logging.config
 from backend.utils.secrets import get_secret
-from ee.licensing.verifier import check_license
 
 # Clear prev config
 LOGGING_CONFIG = None
@@ -468,18 +467,5 @@ SLACK_WEBHOOK_URI = f"https://hooks.slack.com/services/{os.getenv('SLACK_NOTIFIE
 
 # Whether the app is self-hosted or cloud-hosted
 # Value should be either 'self' or 'cloud'
-try:
-    APP_HOST = os.getenv("APP_HOST")
-except:
-    APP_HOST = "self"
+APP_HOST = os.getenv("APP_HOST", "self")
 
-
-PHASE_LICENSE = check_license(get_secret("PHASE_LICENSE_OFFLINE"))
-
-
-STRIPE = {}
-if APP_HOST == "cloud":
-    try:
-        from ee.settings import STRIPE
-    except ImportError:
-        pass

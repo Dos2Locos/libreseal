@@ -159,12 +159,12 @@ describe('setup script text', () => {
     expect(script.split(SUBJECT).length - 1).toBe(1)
   })
 
-  it('uploads the JWKS instead of pointing Google at Phase', () => {
+  it('uploads the JWKS instead of pointing Google at LibreSeal', () => {
     expect(script).toContain(`printf '%s\\n' '${JWKS}' > phase-jwks.json`)
     expect(script).toContain('--jwk-json-path=phase-jwks.json')
     expect(script).toContain('--issuer-uri="$ISSUER"')
-    expect(script).toContain("# Phase's public key for this credential.\n")
-    expect(script).not.toContain('Google never contacts Phase')
+    expect(script).toContain("# LibreSeal's public key for this credential.\n")
+    expect(script).not.toContain('Google never contacts LibreSeal')
     // gcloud's Workload Identity commands only take the project ID.
     expect(script).toContain(
       `PROJECT_ID="$(gcloud projects describe "$PROJECT_NUMBER" --format='value(projectId)')"`
@@ -266,7 +266,7 @@ describe('setup script under bash', () => {
       '--role=roles/secretmanager.secretAccessor',
     ])
     expect(grants[0]).toContain(`--member=${PRINCIPAL}`)
-    expect(result.stdout.trim()).toBe('Done: Google Cloud now trusts this Phase integration.')
+    expect(result.stdout.trim()).toBe('Done: Google Cloud now trusts this LibreSeal integration.')
   })
 
   it('restores a deleted pool and provider and updates the provider in place', () => {

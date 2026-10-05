@@ -1,4 +1,6 @@
-import { ApiOrganisationPlanChoices, NetworkAccessPolicyType } from '@/apollo/graphql'
+import { UnavailableBadge } from '@/components/common/UnavailableFeature'
+import { useFeature } from '@/hooks/useFeature'
+import { NetworkAccessPolicyType } from '@/apollo/graphql'
 import { Button } from '@/components/common/Button'
 import { EmptyState } from '@/components/common/EmptyState'
 import GenericDialog from '@/components/common/GenericDialog'
@@ -14,11 +16,10 @@ import { useMutation, useQuery } from '@apollo/client'
 import { isClientIpAllowed } from '@/utils/access/ip'
 import { toast } from 'react-toastify'
 import { arraysEqual } from '@/utils/crypto'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
 
 export const ManageOrgGlobalPolicies = () => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
+  const networkPoliciesAvailable = useFeature('network_policies')
 
   // Permissions
   const userCanReadNetworkPolicies = organisation
@@ -117,17 +118,11 @@ export const ManageOrgGlobalPolicies = () => {
 
   if (!organisation) return <></>
 
-  if (organisation.plan === ApiOrganisationPlanChoices.Pr)
+  if (!networkPoliciesAvailable)
     return (
-      <UpsellDialog
-        title="Upgrade to Enterprise to manage global network access policies"
-        buttonLabel={
-          <>
-            <FaNetworkWired /> Manage global policies{' '}
-            <PlanLabel plan={ApiOrganisationPlanChoices.En} />{' '}
-          </>
-        }
-      />
+      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
+        <FaNetworkWired /> Manage global policies <UnavailableBadge />
+      </Button>
     )
 
   return (

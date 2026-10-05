@@ -1,5 +1,0 @@
-mutation DeleteStripePaymentMethod($organisationId: ID!, $paymentMethodId: String!) {
-  deletePaymentMethod(organisationId: $organisationId, paymentMethodId: $paymentMethodId) {
-    ok
-  }
-}

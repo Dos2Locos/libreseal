@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 
 # Single source of truth for org-level SSO provider metadata.
 # To add a new provider: add an entry here, create its adapter, done.
+# NOTE (LibreSeal): the adapters referenced below are not shipped; see
+# get_org_provider_meta.
 # `required_fields` is validated at create/update time so that direct GraphQL
 # calls can't bypass the frontend form validation. `field_validators` is a map
 # from field name to a callable that returns True iff the value is acceptable.
@@ -87,7 +89,17 @@ ORG_SSO_PROVIDER_CHOICES = [
 
 
 def get_org_provider_meta(provider_type):
-    """Look up provider metadata from the registry. Returns None if unknown."""
+    """Look up provider metadata from the registry. Returns None if unknown.
+
+    Org-level SSO adapters (Entra ID, Okta) only exist upstream under the
+    Phase Enterprise License. The registry entries are kept so stored
+    provider_type values and model choices stay valid, but LibreSeal reports
+    every org provider as unsupported until a clean-room adapter exists.
+    """
+    from backend.edition import Feature, feature_enabled
+
+    if not feature_enabled(Feature.ENTERPRISE_SSO):
+        return None
     return ORG_SSO_PROVIDER_REGISTRY.get(provider_type)
 
 

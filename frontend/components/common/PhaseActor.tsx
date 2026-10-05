@@ -20,7 +20,7 @@ export const PhaseActor = ({
   return (
     <div
       className={clsx('flex items-center gap-0.5 font-medium', textSize, className)}
-      title="Triggered by the Phase engine"
+      title="Triggered by the LibreSeal engine"
     >
       <LogoMark className={clsx(logoSize, 'shrink-0 fill-zinc-900 dark:fill-zinc-100')} />
       <span>phase</span>

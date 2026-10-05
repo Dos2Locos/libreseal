@@ -5,9 +5,6 @@ from api.utils.access.permissions import (
     user_can_access_environment,
     user_has_permission,
 )
-from ee.integrations.secrets.dynamic.graphene.queries import resolve_dynamic_secrets
-from ee.integrations.secrets.dynamic.graphene.types import DynamicSecretType
-from backend.quotas import PLAN_CONFIG
 import graphene
 from enum import Enum
 from graphene import ObjectType, relay, NonNull
@@ -50,7 +47,6 @@ from api.models import (
     SCIMEvent,
 )
 from logs.dynamodb_models import KMSLog
-from django.utils import timezone
 from api.utils.access.roles import OWNER_ROLE_KEY, get_default_role_template, prune_retired_permissions
 from graphql import GraphQLError
 from itertools import chain
@@ -197,32 +193,9 @@ class OrganisationType(DjangoObjectType):
         return OrganisationType._get_member(self, info).identity_key
 
     def resolve_plan_detail(self, info):
+        from backend.graphene.queries.quotas import build_plan_detail
 
-        plan = PLAN_CONFIG[self.plan]
-
-        plan["seats_used"] = {
-            "users": (
-                OrganisationMember.objects.filter(
-                    organisation=self, deleted_at=None
-                ).count()
-                + OrganisationMemberInvite.objects.filter(
-                    organisation=self, valid=True, expires_at__gte=timezone.now()
-                ).count()
-            ),
-            "service_accounts": ServiceAccount.objects.filter(
-                organisation=self, deleted_at=None
-            ).count(),
-        }
-
-        plan["seats_used"]["total"] = (
-            plan["seats_used"]["users"] + plan["seats_used"]["service_accounts"]
-        )
-
-        plan["app_count"] = App.objects.filter(
-            organisation=self, deleted_at=None
-        ).count()
-
-        return plan
+        return build_plan_detail(self)
 
 
 class OrganisationMemberType(DjangoObjectType):
@@ -733,9 +706,6 @@ class EnvironmentType(DjangoObjectType):
     secrets = graphene.NonNull(
         graphene.List(SecretType), path=graphene.String(required=False)
     )
-    dynamic_secrets = graphene.NonNull(
-        graphene.List(DynamicSecretType), path=graphene.String(required=False)
-    )
     folder_count = graphene.Int()
     secret_count = graphene.Int()
     members = graphene.NonNull(graphene.List(OrganisationMemberType))
@@ -778,10 +748,6 @@ class EnvironmentType(DjangoObjectType):
 
         secrets = list(Secret.objects.filter(**filter).order_by("-created_at"))
         return secrets
-
-    def resolve_dynamic_secrets(self, info, path=None):
-        # Reuse the existing resolver from queries.py
-        return resolve_dynamic_secrets(root=None, info=info, env_id=self.id, path=path)
 
     def resolve_folders(self, info, path=None):
         if not user_can_access_environment(info.context.user.userId, self.id):

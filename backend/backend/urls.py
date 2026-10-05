@@ -102,7 +102,6 @@ urlpatterns = [
 public_urls = [
     path("", root_endpoint),
     path("v1/secrets/", PublicSecretsView.as_view()),
-    path("v1/secrets/dynamic/", include("ee.integrations.secrets.dynamic.rest.urls")),
     path("v1/apps/", PublicAppsView.as_view()),
     path("v1/apps/<app_id>/", PublicAppDetailView.as_view()),
     path("v1/environments/", PublicEnvironmentsView.as_view()),
@@ -136,28 +135,16 @@ public_urls = [
     path("identities/external/v1/azure/entra/auth/", azure_entra_auth),
 ]
 
-# SCIM v2 Provisioning API
-try:
-    scim_urls = [
-        path("v1/scim/v2/", include("ee.authentication.scim.urls")),
-    ]
-    urlpatterns.extend(scim_urls)
-except ImportError:
-    pass
-
 # Mount at root first (cloud: api.phase.dev/v1/...) so reverse() returns the
 # canonical form, then at /public/ for legacy clients and self-hosted nginx
 # (which forwards /service/public/... after stripping /service/).
 urlpatterns.append(path("", include(public_urls)))
 urlpatterns.append(path("public/", include(public_urls)))
 
-# Cloud-hosted specific URLs
+# Cloud-hosted specific URLs (Stripe billing webhook is not part of LibreSeal)
 if CLOUD_HOSTED:
-    from ee.billing.webhooks.stripe import stripe_webhook
-
     cloud_urls = [
         path("kms/<app_id>", kms),
-        path("stripe/webhook/", stripe_webhook, name="stripe-webhook"),
     ]
     urlpatterns.extend(cloud_urls)
 

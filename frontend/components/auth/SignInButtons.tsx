@@ -328,7 +328,7 @@ export default function SignInButtons({
     if (loading) return 'Logging in...'
     if (checking) return 'Checking...'
     if (derivingKey) return 'Deriving keys...'
-    return `Log in to Phase ${isCloudHosted() ? 'Cloud' : ''}`
+    return 'Log in to LibreSeal'
   }
 
   useEffect(() => {
@@ -698,29 +698,6 @@ export default function SignInButtons({
             </div>
           )}
 
-          {isCloudHosted() && (
-            <p className="text-neutral-500 text-xs py-4 max-w-sm">
-              By continuing, you are agreeing to our{' '}
-              <Link
-                className="text-emerald-400 hover:text-emerald-500 transition ease"
-                href="https://phase.dev/legal/terms"
-                target="_blank"
-                rel="noopener"
-              >
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link
-                className="text-emerald-400 hover:text-emerald-500 transition ease"
-                href="https://phase.dev/legal/privacy"
-                target="_blank"
-                rel="noopener"
-              >
-                Privacy Policy
-              </Link>
-              .
-            </p>
-          )}
         </div>
       )}
     </div>

@@ -316,7 +316,7 @@ class PublicTeamsView(APIView):
 
         if not can_use_teams(org):
             return Response(
-                {"error": "Teams are not available on your organisation's plan."},
+                {"error": "Teams are not available."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

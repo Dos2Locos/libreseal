@@ -1,9 +1,7 @@
 'use client'
 
 import {
-  ApiOrganisationPlanChoices,
   ApiSecretTypeChoices,
-  DynamicSecretType,
   EnvironmentType,
   SecretFolderType,
   SecretInput,
@@ -77,12 +75,9 @@ import {
   EMPTY_SECRET_FILTER,
   filterIsActive,
   secretMatchesFilter,
-  showDynamicUnderFilter,
   collectSecretTags,
   parseSecretSearch,
   secretMatchesSearch,
-  dynamicSearchText,
-  dynamicMatchesSearch,
   hasRegularOnlyFacet,
 } from '@/utils/secrets'
 import SortMenu from '@/components/environments/secrets/SortMenu'
@@ -95,23 +90,7 @@ import { EnvironmentPageSkeleton } from './_components/EnvironmentPageSkeleton'
 import EnvFileDropZone from '@/components/environments/secrets/import/EnvFileDropZone'
 import SingleEnvImportDialog from '@/components/environments/secrets/import/SingleEnvImportDialog'
 import { useWarnIfUnsavedChanges } from '@/hooks/warnUnsavedChanges'
-import { FaBolt, FaXmark } from 'react-icons/fa6'
-import {
-  CreateDynamicSecretDialog,
-  CreateDynamicSecretInitialState,
-} from '@/ee/components/secrets/dynamic/CreateDynamicSecretDialog'
-import { GetDynamicSecretCloneSpec } from '@/graphql/queries/secrets/dynamic/getDynamicCloneSpec.gql'
-import { DynamicSecretRow } from '@/ee/components/secrets/dynamic/DynamicSecretRow'
-import {
-  CreateRotatingSecretDialog,
-  CreateRotatingSecretInitialState,
-} from '@/ee/components/secrets/rotation/CreateRotatingSecretDialog'
-import { GetRotationCloneSpec } from '@/graphql/queries/secrets/rotation/getRotationCloneSpec.gql'
-import { useLazyQuery } from '@apollo/client'
-import { RotatingSecretGroup } from '@/ee/components/secrets/rotation/RotatingSecretGroup'
-import { FaArrowsRotate } from 'react-icons/fa6'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
+import { FaXmark } from 'react-icons/fa6'
 import { SecretReferenceContext } from '@/contexts/secretReferenceContext'
 import {
   ReferenceContext,
@@ -135,24 +114,10 @@ export default function EnvironmentPath(props0: {
   const secretToHighlight = searchParams?.get('secret')
   const highlightedRef = useRef<HTMLDivElement>(null)
 
-  // Cross-env replicate flow: ?createRotation=<sourceRotatingSecretId>
-  const replicateSourceId = searchParams?.get('createRotation') ?? null
-  const [rotationPrefill, setRotationPrefill] = useState<CreateRotatingSecretInitialState | null>(
-    null
-  )
-  const [fetchRotationCloneSpec] = useLazyQuery(GetRotationCloneSpec)
-
-  // Cross-env replicate flow: ?createDynamic=<sourceDynamicSecretId>
-  const replicateDynamicSourceId = searchParams?.get('createDynamic') ?? null
-  const [dynamicPrefill, setDynamicPrefill] = useState<CreateDynamicSecretInitialState | null>(null)
-  const [fetchDynamicCloneSpec] = useLazyQuery(GetDynamicSecretCloneSpec)
-
   const [envKeys, setEnvKeys] = useState<EnvKeyring | null>(null)
 
   const [serverSecrets, setServerSecrets] = useState<SecretType[]>([])
   const [clientSecrets, setClientSecrets] = useState<SecretType[]>([])
-
-  const [dynamicSecrets, setDynamicSecrets] = useState<DynamicSecretType[]>([])
 
   const [secretsLoaded, setSecretsLoaded] = useState(false)
   const [decrypting, setDecrypting] = useState(false)
@@ -164,9 +129,6 @@ export default function EnvironmentPath(props0: {
   const [globallyRevealed, setGloballyRevealed] = useState<boolean>(false)
 
   const importDialogRef = useRef<{ openModal: () => void; closeModal: () => void }>(null)
-  const dynamicSecretDialogRef = useRef<{ openModal: () => void; closeModal: () => void }>(null)
-  const rotatingSecretDialogRef = useRef<{ openModal: () => void; closeModal: () => void }>(null)
-  const upsellDialogRef = useRef<{ openModal: () => void; closeModal: () => void }>(null)
   const refWarningDialogRef = useRef<{ openModal: () => void; closeModal: () => void }>(null)
   const [refWarnings, setRefWarnings] = useState<ReferenceValidationError[]>([])
 
@@ -211,148 +173,6 @@ export default function EnvironmentPath(props0: {
     setSecretsLoaded(false)
   }, [params.environment, params.app, params.team])
 
-  // Drops createRotation/createDynamic from the URL so a refresh doesn't
-  // re-trigger the prefill flow. Used on success, terminal failure, or
-  // null spec.
-  const clearReplicateQuery = useCallback(
-    (key: 'createRotation' | 'createDynamic' = 'createRotation') => {
-      if (!pathname || !searchParams?.get(key)) return
-      const params = new URLSearchParams(searchParams?.toString() ?? '')
-      params.delete(key)
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [pathname, router, searchParams]
-  )
-
-  // Read ?createRotation and fetch the source rotating secret's prefill spec.
-  useEffect(() => {
-    if (!replicateSourceId || rotationPrefill) return
-    let cancelled = false
-    fetchRotationCloneSpec({ variables: { sourceRotatingSecretId: replicateSourceId } })
-      .then((res) => {
-        if (cancelled) return
-        const spec = res.data?.rotationCloneSpec
-        if (!spec) {
-          toast.error('Could not load rotation prefill')
-          clearReplicateQuery()
-          return
-        }
-        setRotationPrefill({
-          providerId: spec.provider,
-          authenticationId: spec.authenticationId ?? null,
-          config: (spec.config as Record<string, unknown>) ?? null,
-          keyMap: (spec.keyMap ?? []).map((k: { id: string; keyName: string }) => ({
-            id: k.id,
-            keyName: k.keyName,
-          })),
-          name: spec.name ?? null,
-          description: spec.description ?? null,
-          rotationIntervalSeconds: spec.rotationIntervalSeconds ?? null,
-          revocationDelaySeconds: spec.revocationDelaySeconds ?? null,
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        toast.error('Failed to load rotation prefill')
-        clearReplicateQuery()
-      })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replicateSourceId])
-
-  // Open the dialog once the prefill is in state AND the dialog has mounted.
-  // Doing this in a separate effect avoids a race where the create-dialog
-  // ref isn't ready yet on the first tick after navigation. Bounded so we
-  // don't spin forever if the dialog never mounts (e.g. env never loads).
-  const replicateDialogOpenedRef = useRef(false)
-  useEffect(() => {
-    if (!rotationPrefill || replicateDialogOpenedRef.current) return
-    let cancelled = false
-    let attempts = 0
-    const MAX_ATTEMPTS = 120 // ~2s at 60fps
-    const tryOpen = () => {
-      if (cancelled) return
-      if (rotatingSecretDialogRef.current) {
-        rotatingSecretDialogRef.current.openModal()
-        replicateDialogOpenedRef.current = true
-        return
-      }
-      if (++attempts >= MAX_ATTEMPTS) {
-        clearReplicateQuery('createRotation')
-        return
-      }
-      requestAnimationFrame(tryOpen)
-    }
-    tryOpen()
-    return () => {
-      cancelled = true
-    }
-  }, [rotationPrefill, clearReplicateQuery])
-
-  // Same pattern as rotation, for dynamic secrets via ?createDynamic=.
-  useEffect(() => {
-    if (!replicateDynamicSourceId || dynamicPrefill) return
-    let cancelled = false
-    fetchDynamicCloneSpec({ variables: { sourceDynamicSecretId: replicateDynamicSourceId } })
-      .then((res) => {
-        if (cancelled) return
-        const spec = res.data?.dynamicSecretCloneSpec
-        if (!spec) {
-          toast.error('Could not load dynamic-secret prefill')
-          clearReplicateQuery('createDynamic')
-          return
-        }
-        setDynamicPrefill({
-          providerId: spec.provider,
-          authenticationId: spec.authenticationId ?? null,
-          config: (spec.config as Record<string, unknown>) ?? null,
-          keyMap: (spec.keyMap ?? []).flatMap((k: { id: string; keyName: string } | null) =>
-            k ? [{ id: k.id, keyName: k.keyName }] : []
-          ),
-          name: spec.name ?? null,
-          description: spec.description ?? null,
-          defaultTtlSeconds: spec.defaultTtlSeconds ?? null,
-          maxTtlSeconds: spec.maxTtlSeconds ?? null,
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        toast.error('Failed to load dynamic-secret prefill')
-        clearReplicateQuery('createDynamic')
-      })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replicateDynamicSourceId])
-
-  const replicateDynamicDialogOpenedRef = useRef(false)
-  useEffect(() => {
-    if (!dynamicPrefill || replicateDynamicDialogOpenedRef.current) return
-    let cancelled = false
-    let attempts = 0
-    const MAX_ATTEMPTS = 120
-    const tryOpen = () => {
-      if (cancelled) return
-      if (dynamicSecretDialogRef.current) {
-        dynamicSecretDialogRef.current.openModal()
-        replicateDynamicDialogOpenedRef.current = true
-        return
-      }
-      if (++attempts >= MAX_ATTEMPTS) {
-        clearReplicateQuery('createDynamic')
-        return
-      }
-      requestAnimationFrame(tryOpen)
-    }
-    tryOpen()
-    return () => {
-      cancelled = true
-    }
-  }, [dynamicPrefill, clearReplicateQuery])
 
   useEffect(() => {
     // 2. Scroll into view when secretToHighlight changes
@@ -498,7 +318,6 @@ export default function EnvironmentPath(props0: {
     return `/${params.team}/apps/${params.app}/environments/${env.id}${secretPath}`
   }
 
-  //const dynamicSecrets: DynamicSecretType[] = data?.dynamicSecrets ?? []
 
   const envLinks =
     appEnvsData?.appEnvironments
@@ -785,35 +604,12 @@ export default function EnvironmentPath(props0: {
           })
         )
 
-        //Decrypt dynamic secrets keyMap.keyName
-        const decryptedDynamicSecrets = await Promise.all(
-          (data.dynamicSecrets ?? []).map(async (secret: DynamicSecretType) => {
-            const decryptedSecret = structuredClone(secret)
-            if (decryptedSecret.keyMap && Array.isArray(decryptedSecret.keyMap)) {
-              decryptedSecret.keyMap = await Promise.all(
-                decryptedSecret.keyMap.map(async (keyMapItem) => ({
-                  ...keyMapItem,
-                  keyName: keyMapItem?.keyName
-                    ? await decryptAsymmetric(
-                        keyMapItem.keyName,
-                        envKeys.privateKey,
-                        envKeys.publicKey
-                      )
-                    : keyMapItem?.keyName,
-                }))
-              )
-            }
-            return decryptedSecret
-          })
-        )
-
-        return { decryptedStaticSecrets, decryptedDynamicSecrets }
+        return { decryptedStaticSecrets }
       }
 
       decryptSecrets().then((decryptedSecrets) => {
         setServerSecrets(decryptedSecrets.decryptedStaticSecrets)
         setClientSecrets(decryptedSecrets.decryptedStaticSecrets)
-        setDynamicSecrets(decryptedSecrets.decryptedDynamicSecrets)
         setDecrypting(false)
         setSecretsLoaded(true)
       })
@@ -856,7 +652,7 @@ export default function EnvironmentPath(props0: {
       return false
     }
 
-    if (duplicateKeysExist(clientSecrets, dynamicSecrets)) {
+    if (duplicateKeysExist(clientSecrets)) {
       toast.error('Secret keys cannot be repeated!')
       setIsloading(false)
       return false
@@ -974,24 +770,10 @@ export default function EnvironmentPath(props0: {
     return items
   }, [filteredAndSortedSecrets])
 
-  const filteredDynamicSecrets = useMemo(() => {
-    if (!showDynamicUnderFilter(filter)) return []
-    return dynamicSecrets.filter((s) =>
-      dynamicMatchesSearch(
-        dynamicSearchText(
-          s.name,
-          (s.keyMap ?? []).map((k) => k?.keyName)
-        ),
-        parsedSearch
-      )
-    )
-  }, [dynamicSecrets, parsedSearch, filter])
-
   // Add this (was missing -> ReferenceError: noSecrets is not defined)
   const noSecrets =
     filteredAndSortedSecrets.length === 0 &&
-    filteredFolders.length === 0 &&
-    filteredDynamicSecrets.length === 0
+    filteredFolders.length === 0
 
   const downloadEnvFile = () => {
     exportToEnvFile(serverSecrets, environment.app.name, environment.name, secretPath)
@@ -1199,11 +981,6 @@ export default function EnvironmentPath(props0: {
   const NewSecretMenu = () => {
     const userCanCreateSecrets = hasPermission('Secrets', 'create', true)
 
-    const allowDynamicSecrets = organisation?.plan === ApiOrganisationPlanChoices.En
-    const allowRotatingSecrets =
-      organisation?.plan === ApiOrganisationPlanChoices.En ||
-      organisation?.plan === ApiOrganisationPlanChoices.Pr
-
     if (!userCanCreateSecrets) return <></>
     return (
       <SplitButton
@@ -1212,30 +989,6 @@ export default function EnvironmentPath(props0: {
         onClick={() => handleAddSecret(true)}
         menuContent={
           <div className="w-max flex flex-col items-start gap-1">
-            <Button
-              variant="secondary"
-              onClick={() =>
-                allowRotatingSecrets
-                  ? rotatingSecretDialogRef.current?.openModal()
-                  : upsellDialogRef.current?.openModal()
-              }
-            >
-              <FaArrowsRotate /> Rotating Secret{' '}
-              {!allowRotatingSecrets && <PlanLabel plan={ApiOrganisationPlanChoices.Pr} />}
-            </Button>
-
-            <Button
-              variant="secondary"
-              onClick={() =>
-                allowDynamicSecrets
-                  ? dynamicSecretDialogRef.current?.openModal()
-                  : upsellDialogRef.current?.openModal()
-              }
-            >
-              <FaBolt /> Dynamic Secret{' '}
-              {!allowDynamicSecrets && <PlanLabel plan={ApiOrganisationPlanChoices.En} />}
-            </Button>
-
             <Button
               variant="secondary"
               onClick={() => handleAddSecret(true, '', ApiSecretTypeChoices.Secret, '${')}
@@ -1505,26 +1258,6 @@ export default function EnvironmentPath(props0: {
 
             <div className="flex flex-col gap-0 divide-y divide-neutral-500/20 bg-zinc-100 dark:bg-zinc-800 rounded-md shadow-md [&>*:first-child]:rounded-t-md [&>*:last-child]:rounded-b-md">
               <NewFolderMenu />
-              <CreateDynamicSecretDialog
-                environment={environment}
-                path={secretPath}
-                ref={dynamicSecretDialogRef}
-                initialState={dynamicPrefill}
-                onCreated={() => clearReplicateQuery('createDynamic')}
-              />
-              <CreateRotatingSecretDialog
-                environment={environment}
-                path={secretPath}
-                ref={rotatingSecretDialogRef}
-                initialState={rotationPrefill}
-                onCreated={clearReplicateQuery}
-              />
-              <UpsellDialog
-                ref={upsellDialogRef}
-                title="Upgrade to Enterprise"
-                targetPlan={ApiOrganisationPlanChoices.En}
-              />
-
               {organisation &&
                 filteredFolders.map((folder: SecretFolderType) => (
                   <SecretFolderRow
@@ -1570,28 +1303,15 @@ export default function EnvironmentPath(props0: {
 
                   return (
                     <>
-                      {filteredDynamicSecrets.map((secret) => {
-                        const keys = (secret.keyMap as { id: string }[] | null) ?? []
-                        const startIndex = runningIndex
-                        runningIndex += keys.length
-                        return (
-                          <DynamicSecretRow
-                            key={secret.id}
-                            secret={secret}
-                            environment={environment}
-                            startIndex={startIndex}
-                          />
-                        )
-                      })}
                       {groupedSecretItems.map((item) => {
                         if (item.kind === 'single') return renderSecretRow(item.secret)
+                        // Secret rotation is not available in LibreSeal: rows
+                        // materialised by a migrated rotating secret render as
+                        // plain (read-only) secrets.
                         return (
-                          <RotatingSecretGroup
-                            key={`rotating-${item.rotatingSecretId}`}
-                            rotatingSecretId={item.rotatingSecretId}
-                          >
+                          <Fragment key={`rotating-${item.rotatingSecretId}`}>
                             {item.secrets.map((s) => renderSecretRow(s))}
-                          </RotatingSecretGroup>
+                          </Fragment>
                         )
                       })}
                     </>

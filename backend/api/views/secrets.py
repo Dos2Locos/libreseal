@@ -1,7 +1,5 @@
 from api.auth import PhaseTokenAuthentication
 from api.models import (
-    DynamicSecret,
-    DynamicSecretLease,
     Environment,
     PersonalSecret,
     Secret,
@@ -35,15 +33,6 @@ import json
 from api.content_negotiation import CamelCaseContentNegotiation
 from api.utils.access.middleware import IsIPAllowed
 from api.throttling import PlanBasedRateThrottle
-from ee.integrations.secrets.dynamic.exceptions import (
-    DynamicSecretError,
-    PlanRestrictionError,
-    TTLExceededError,
-)
-from ee.integrations.secrets.dynamic.serializers import DynamicSecretSerializer
-from ee.integrations.secrets.dynamic.utils import (
-    create_dynamic_secret_lease,
-)
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
@@ -55,6 +44,7 @@ from djangorestframework_camel_case.render import (
     CamelCaseJSONRenderer,
 )
 from rest_framework.renderers import JSONRenderer
+from backend.edition import Feature, unavailable_message
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +117,38 @@ def _resolve_secret_tags(tag_names, org):
         )
         resolved.append(tag)
     return resolved, None
+
+
+
+def _option_enabled(params, name):
+    return name in params and str(params.get(name, "false")).lower() != "false"
+
+
+def dynamic_secrets_unavailable_response(params, env, path=None):
+    """Explicit error when a client asks for dynamic secrets that exist in
+    this environment (records migrated from Phase) but LibreSeal cannot
+    serve. Requests in environments without dynamic secrets are unaffected,
+    so clients that ask for them by default (the CLI does) keep working."""
+    if not (
+        _option_enabled(params, "dynamic") or _option_enabled(params, "include_dynamic")
+    ):
+        return None
+    from api.models import DynamicSecret
+
+    dynamic = DynamicSecret.objects.filter(environment=env, deleted_at=None)
+    if path:
+        dynamic = dynamic.filter(path=path)
+    if not dynamic.exists():
+        return None
+    return Response(
+        {
+            "error": unavailable_message(Feature.DYNAMIC_SECRETS)
+            + " This environment contains dynamic secrets migrated from Phase,"
+            " which cannot be returned. An administrator can remove them with"
+            " `python manage.py libreseal_remove_legacy_credentials`."
+        },
+        status=status.HTTP_501_NOT_IMPLEMENTED,
+    )
 
 
 class E2EESecretsView(APIView):
@@ -206,6 +228,12 @@ class E2EESecretsView(APIView):
         except:
             pass
 
+        unavailable = dynamic_secrets_unavailable_response(
+            request.headers, env, secrets_filter.get("path")
+        )
+        if unavailable is not None:
+            return unavailable
+
         secrets = list(
             Secret.objects.filter(**secrets_filter).prefetch_related('tags')
         )
@@ -223,124 +251,12 @@ class E2EESecretsView(APIView):
             secrets, many=True, context={"org_member": request.auth["org_member"]}
         )
 
-        include_dynamic_secrets = (
-            # treat presence (any value) of either header as True unless explicitly "false"
-            (
-                "dynamic" in request.headers
-                and request.headers.get("dynamic", "false").lower() != "false"
-            )
-            or (
-                "include_dynamic" in request.headers
-                and request.headers.get("include_dynamic", "false").lower() != "false"
-            )
-        )
-
-        dynamic_secrets_data = []
-        if include_dynamic_secrets:
-            dynamic_secrets_filter = {
-                "environment": env,
-                "deleted_at": None,
-            }
-            try:
-                path = request.headers.get("path")
-                if path:
-                    path = normalize_path_string(path)
-                    dynamic_secrets_filter["path"] = path
-            except Exception:
-                pass
-
-            dynamic_secrets_qs = DynamicSecret.objects.filter(**dynamic_secrets_filter)
-
-            # If lease header is present, generate a lease per secret
-            include_lease = (
-                "lease" in request.headers
-                and request.headers.get("lease", "false").lower() != "false"
-            )
-
-            # Get optional lease_ttl header for custom TTL
-            lease_ttl = request.headers.get("lease_ttl")
-            if lease_ttl:
-                try:
-                    lease_ttl = int(lease_ttl)
-                except ValueError:
-                    return Response(
-                        {"error": "lease_ttl must be a valid integer (seconds)"},
-                        status=400,
-                    )
-
-            service_account = None
-            if request.auth.get("service_account_token") is not None:
-                service_account = request.auth["service_account_token"].service_account
-
-            if include_lease:
-                leases_by_secret_id = {}
-                failed_leases = []
-                for ds in dynamic_secrets_qs:
-                    try:
-                        lease, _ = create_dynamic_secret_lease(
-                            ds,
-                            ttl=lease_ttl,  # Pass the TTL if provided
-                            organisation_member=request.auth.get("org_member"),
-                            service_account=service_account,
-                            request=request,
-                        )
-                        leases_by_secret_id[ds.id] = str(lease.id)
-                    except PlanRestrictionError as e:
-                        return Response({"error": str(e)}, status=403)
-                    except DynamicSecretError as e:
-                        failed_leases.append(
-                            {
-                                "secret_id": str(ds.id),
-                                "secret_name": ds.name,
-                                "error": str(e),
-                            }
-                        )
-                    except Exception as e:
-                        logger.exception(
-                            "Unexpected error creating lease for dynamic secret %s",
-                            ds.id,
-                        )
-                        failed_leases.append(
-                            {
-                                "secret_id": str(ds.id),
-                                "secret_name": ds.name,
-                                "error": "An internal error occurred",
-                            }
-                        )
-
-                # If any leases failed to create, return error response
-                if failed_leases:
-                    return Response(
-                        {
-                            "error": "One or more dynamic secret leases could not be created",
-                            "failed_leases": failed_leases,
-                            "successful_leases": len(leases_by_secret_id),
-                        },
-                        status=400,
-                    )
-
-                # Serialize each secret with its lease_id in context
-                dynamic_secrets_data = [
-                    DynamicSecretSerializer(
-                        ds,
-                        context={
-                            "sse": False,
-                            "with_credentials": True,
-                            "lease_id": leases_by_secret_id.get(ds.id),
-                        },
-                    ).data
-                    for ds in dynamic_secrets_qs
-                ]
-            else:
-                # Serialize without lease
-                dynamic_secrets_data = DynamicSecretSerializer(
-                    dynamic_secrets_qs, many=True, context={"sse": False}
-                ).data
-
+        # Dynamic secrets are not available in LibreSeal (upstream implements
+        # them under the Phase Enterprise License). The `dynamic`/`lease`
+        # options are ignored when the environment has no dynamic secrets,
+        # so clients that request them by default keep working; see
+        # dynamic_secrets_unavailable_response for migrated records.
         response_data = serializer.data
-
-        if include_dynamic_secrets:
-            response_data.extend(dynamic_secrets_data)
 
         return Response(
             response_data,
@@ -714,6 +630,12 @@ class PublicSecretsView(APIView):
             # Filter secrets based on these tags
             secrets_filter["tags__in"] = tags
 
+        unavailable = dynamic_secrets_unavailable_response(
+            request.GET, env, secrets_filter.get("path")
+        )
+        if unavailable is not None:
+            return unavailable
+
         secrets = list(
             Secret.objects.filter(**secrets_filter).prefetch_related('tags')
         )
@@ -743,132 +665,12 @@ class PublicSecretsView(APIView):
             },
         )
 
-        include_dynamic_secrets = (
-            # treat presence (any value) of either param as True unless explicitly "false"
-            (
-                "dynamic" in request.GET
-                and request.GET.get("dynamic", "false").lower() != "false"
-            )
-            or (
-                "include_dynamic" in request.GET
-                and request.GET.get("include_dynamic", "false").lower() != "false"
-            )
-        )
-
-        dynamic_secrets_data = []
-        if include_dynamic_secrets:
-            dynamic_secrets_filter = {
-                "environment": env,
-                "deleted_at": None,
-            }
-            try:
-                path = request.GET.get("path")
-                if path:
-                    path = normalize_path_string(path)
-                    dynamic_secrets_filter["path"] = path
-            except Exception:
-                pass
-
-            dynamic_secrets_qs = DynamicSecret.objects.filter(**dynamic_secrets_filter)
-
-            # If ?lease is present, generate a lease per secret
-            include_lease = (
-                "lease" in request.GET
-                and request.GET.get("lease", "false").lower() != "false"
-            )
-
-            # Get optional lease_ttl parameter for custom TTL
-            lease_ttl = request.GET.get("lease_ttl")
-            if lease_ttl:
-                try:
-                    lease_ttl = int(lease_ttl)
-                except ValueError:
-                    return Response(
-                        {"error": "lease_ttl must be a valid integer (seconds)"},
-                        status=400,
-                    )
-
-            service_account = None
-            if request.auth.get("service_account_token") is not None:
-                service_account = request.auth["service_account_token"].service_account
-
-            if include_lease:
-                leases_by_secret_id = {}
-                failed_leases = []
-                for ds in dynamic_secrets_qs:
-                    try:
-                        lease, _ = create_dynamic_secret_lease(
-                            ds,
-                            ttl=lease_ttl,
-                            organisation_member=request.auth.get("org_member"),
-                            service_account=service_account,
-                            request=request,
-                        )
-                        leases_by_secret_id[ds.id] = str(lease.id)
-                    except PlanRestrictionError as e:
-                        return Response({"error": str(e)}, status=403)
-                    except (TTLExceededError,) as e:
-                        failed_leases.append(
-                            {
-                                "secret_id": str(ds.id),
-                                "secret_name": ds.name,
-                                "error": str(e),
-                            }
-                        )
-                    except DynamicSecretError as e:
-                        failed_leases.append(
-                            {
-                                "secret_id": str(ds.id),
-                                "secret_name": ds.name,
-                                "error": str(e),
-                            }
-                        )
-                    except Exception as e:
-                        logger.exception(
-                            "Unexpected error creating lease for dynamic secret %s",
-                            ds.id,
-                        )
-                        failed_leases.append(
-                            {
-                                "secret_id": str(ds.id),
-                                "secret_name": ds.name,
-                                "error": str(e),
-                            }
-                        )
-
-                # If any leases failed to create, return error response
-                if failed_leases:
-                    return Response(
-                        {
-                            "error": "One or more dynamic secret leases could not be created",
-                            "failed_leases": failed_leases,
-                            "successful_leases": len(leases_by_secret_id),
-                        },
-                        status=400,
-                    )
-
-                # Serialize each secret with its lease_id in context
-                dynamic_secrets_data = [
-                    DynamicSecretSerializer(
-                        ds,
-                        context={
-                            "sse": True,
-                            "with_credentials": True,
-                            "lease_id": leases_by_secret_id.get(ds.id),
-                        },
-                    ).data
-                    for ds in dynamic_secrets_qs
-                ]
-            else:
-                # Serialize without lease
-                dynamic_secrets_data = DynamicSecretSerializer(
-                    dynamic_secrets_qs, many=True, context={"sse": True}
-                ).data
-
+        # Dynamic secrets are not available in LibreSeal (upstream implements
+        # them under the Phase Enterprise License). The `dynamic`/`lease`
+        # options are ignored when the environment has no dynamic secrets,
+        # so clients that request them by default keep working; see
+        # dynamic_secrets_unavailable_response for migrated records.
         response_data = serializer.data
-
-        if include_dynamic_secrets:
-            response_data.extend(dynamic_secrets_data)
 
         return Response(
             response_data,

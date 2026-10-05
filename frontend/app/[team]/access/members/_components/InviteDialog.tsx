@@ -1,5 +1,4 @@
 import {
-  ApiOrganisationPlanChoices,
   OrganisationMemberType,
   OrganisationMemberInviteType,
   RoleType,
@@ -8,9 +7,7 @@ import { Alert } from '@/components/common/Alert'
 import { Button } from '@/components/common/Button'
 import CopyButton from '@/components/common/CopyButton'
 import { Input } from '@/components/common/Input'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
 import { organisationContext } from '@/contexts/organisationContext'
-import { isCloudHosted } from '@/utils/appConfig'
 import { getAvailableSeats } from '@/utils/organisation'
 import { getInviteLink } from '@/utils/crypto'
 import { useQuery, useMutation } from '@apollo/client'
@@ -94,7 +91,7 @@ const BulkAddEmailsDialog = ({
 
     if (newEmails.length > availableSeats) {
       setError(
-        `You are trying to import ${newEmails.length} email address${newEmails.length === 1 ? '' : 'es'}, but you only have ${availableSeats} available seats in your organisation plan.`
+        `You are trying to import ${newEmails.length} email address${newEmails.length === 1 ? '' : 'es'}, but you only have ${availableSeats} available seats in your organisation.`
       )
       return
     }
@@ -209,11 +206,6 @@ export const InviteDialog = (props: { organisationId: string }) => {
   const assignableRoleOptions = roleOptions.filter(roleIsAssignable)
   const defaultRole =
     assignableRoleOptions.find((option) => option.name === 'Developer') || assignableRoleOptions[0]
-
-  const upsell =
-    isCloudHosted() &&
-    organisation?.plan === ApiOrganisationPlanChoices.Fr &&
-    data?.organisationPlan.seatsUsed.total === data?.organisationPlan.seatLimit
 
   const availableSeats = getAvailableSeats(
     data?.organisationPlan.seatLimit,
@@ -343,17 +335,6 @@ export const InviteDialog = (props: { organisationId: string }) => {
       toast.error('An error occurred while sending invites.')
     }
   }
-
-  if (upsell)
-    return (
-      <UpsellDialog
-        buttonLabel={
-          <>
-            <FaPlus /> Add members
-          </>
-        }
-      />
-    )
 
   return (
     <>

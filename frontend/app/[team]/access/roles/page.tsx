@@ -75,7 +75,7 @@ export default function Roles(props: { params: Promise<{ team: string }> }) {
                           {role.name}{' '}
                           {role.isDefault && (
                             <FaLock
-                              title="This role is managed by Phase and cannot be edited"
+                              title="This role is managed by LibreSeal and cannot be edited"
                               className="text-neutral-500 text-xs"
                             />
                           )}

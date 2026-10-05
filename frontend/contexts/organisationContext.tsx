@@ -5,7 +5,6 @@ import UpdateWrappedSecrets from '@/graphql/mutations/organisation/updateUserWra
 import { useLazyQuery, useMutation } from '@apollo/client'
 import { useSession } from '@/contexts/userContext'
 import { getLocalKeyring } from '@/utils/localStorage'
-import posthog from 'posthog-js'
 
 interface OrganisationContextValue {
   activeOrganisation: OrganisationType | null
@@ -39,17 +38,6 @@ export const OrganisationProvider: React.FC<OrganisationProviderProps> = ({ chil
   const [loading, setLoading] = useState<boolean>(true)
 
   const { organisations } = orgsData ?? { organisations: null }
-
-  useEffect(() => {
-    if (session && organisation) {
-      if (session.user?.email)
-        posthog.identify(organisation.memberId!, {
-          email: session.user.email,
-          name: session.user.name,
-          organisation: organisation.name,
-        })
-    }
-  }, [organisation, session])
 
   useEffect(() => {
     if (session?.user?.email) getOrgs()

@@ -1,11 +1,12 @@
-from django.conf import settings
 from api.models import ActivatedPhaseLicense
 from graphql import GraphQLError
 from api.utils.access.permissions import user_is_org_member
 
 
 def resolve_license(root, info):
-    return settings.PHASE_LICENSE
+    # LibreSeal has no instance license; the field is kept for API
+    # compatibility and always resolves to null.
+    return None
 
 
 def resolve_organisation_license(root, info, organisation_id):

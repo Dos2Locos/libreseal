@@ -183,7 +183,7 @@ export const SetupAWSAuth = (props: {
     props.onComplete()
   }
 
-  const docsLink = 'https://docs.phase.dev/integrations/platforms/aws-secrets-manager'
+  const docsLink = 'https://github.com/Dos2Locos/libreseal#readme'
 
   const generateExternalId = async () => {
     await _sodium.ready

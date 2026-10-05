@@ -1,97 +1,68 @@
-"""resolve_organisation_plan seat-limit reporting.
+"""resolve_organisation_plan reporting in LibreSeal.
 
-The frontend computes availableSeats = seatLimit - seatsUsed and uses it to
-gate member invites (including bulk email import). When a plan has no seat cap
-the backend must report seat_limit = None so the frontend can treat seats as
-unlimited; a numeric value here would drive availableSeats negative and block
-all invites on a self-hosted free plan.
+The frontend computes availableSeats = seatLimit - seatsUsed to gate member
+invites. LibreSeal has no seat cap, so seat_limit and all max_* limits must be
+None (unlimited) whatever plan value is stored on the organisation.
 """
 
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 _M = "backend.graphene.queries.quotas"
 
 
-def _info(user=None):
+def _info():
     info = MagicMock()
-    info.context.user = user or MagicMock()
+    info.context.user = MagicMock()
     return info
 
 
-def _make_org(plan="FR", pricing_version="v1"):
-    org = MagicMock()
-    org.plan = plan
-    org.pricing_version = pricing_version
-    return org
-
-
-def test_self_hosted_free_plan_reports_unlimited_seats():
-    """Non-cloud free plan -> seat_limit is None (unlimited)."""
+@pytest.mark.parametrize("plan", ["FR", "PR", "EN"])
+def test_plan_detail_is_unlimited(plan):
     from backend.graphene.queries.quotas import resolve_organisation_plan
 
-    org = _make_org(plan="FR")
+    org = MagicMock(plan=plan)
 
     with patch(f"{_M}.user_is_org_member", return_value=True), patch(
-        f"{_M}.CLOUD_HOSTED", False
-    ), patch(
-        f"{_M}.PLAN_CONFIG", {"FR": {"name": "Free", "max_users": None}}
-    ), patch(
-        f"{_M}.Organisation"
-    ) as MockOrg, patch(
-        f"{_M}.OrganisationMember"
-    ) as MockMember, patch(
+        "api.models.Organisation"
+    ) as MockOrg, patch(f"{_M}.OrganisationMember") as MockMember, patch(
         f"{_M}.OrganisationMemberInvite"
-    ) as MockInvite, patch(
-        f"{_M}.ServiceAccount"
-    ) as MockSA, patch(
+    ) as MockInvite, patch(f"{_M}.ServiceAccount") as MockSA, patch(
         f"{_M}.App"
     ) as MockApp:
-        MockOrg.FREE_PLAN = "FR"
-        MockOrg.PRICING_V2 = "v2"
         MockOrg.objects.get.return_value = org
         MockMember.objects.filter.return_value.count.return_value = 2
         MockInvite.objects.filter.return_value.count.return_value = 1
-        MockSA.objects.filter.return_value.count.return_value = 0
-        MockApp.objects.filter.return_value.count.return_value = 0
+        MockSA.objects.filter.return_value.count.return_value = 7
+        MockApp.objects.filter.return_value.count.return_value = 4
 
-        plan = resolve_organisation_plan(None, _info(), organisation_id="org-1")
+        detail = resolve_organisation_plan(None, _info(), organisation_id="org-1")
 
-    assert plan["seat_limit"] is None
-    assert plan["seats_used"]["total"] == 3
+    assert detail["name"] == "LibreSeal"
+    assert detail["seat_limit"] is None
+    assert detail["max_users"] is None
+    assert detail["max_apps"] is None
+    assert detail["max_envs_per_app"] is None
+    assert detail["seats_used"] == {"users": 3, "service_accounts": 7, "total": 10}
+    assert detail["app_count"] == 4
 
 
-def test_capped_plan_reports_numeric_seat_limit():
-    """When the plan is capped, seat_limit comes from get_org_seat_limit."""
+def test_non_member_gets_nothing():
     from backend.graphene.queries.quotas import resolve_organisation_plan
 
-    org = _make_org(plan="FR")
+    with patch(f"{_M}.user_is_org_member", return_value=False):
+        assert resolve_organisation_plan(None, _info(), organisation_id="x") is None
 
-    with patch(f"{_M}.user_is_org_member", return_value=True), patch(
-        f"{_M}.CLOUD_HOSTED", True
-    ), patch(
-        f"{_M}.PLAN_CONFIG", {"FR": {"name": "Free", "max_users": 5}}
-    ), patch(
-        "ee.billing.utils.get_org_seat_limit", return_value=5
-    ), patch(
-        f"{_M}.Organisation"
-    ) as MockOrg, patch(
-        f"{_M}.OrganisationMember"
-    ) as MockMember, patch(
+
+def test_plan_detail_does_not_share_state_between_calls():
+    from backend.graphene.queries.quotas import build_plan_detail
+    from backend.quotas import LIBRESEAL_LIMITS
+
+    with patch(f"{_M}.OrganisationMember"), patch(
         f"{_M}.OrganisationMemberInvite"
-    ) as MockInvite, patch(
-        f"{_M}.ServiceAccount"
-    ) as MockSA, patch(
-        f"{_M}.App"
-    ) as MockApp:
-        MockOrg.FREE_PLAN = "FR"
-        MockOrg.PRICING_V2 = "v2"
-        MockOrg.objects.get.return_value = org
-        MockMember.objects.filter.return_value.count.return_value = 2
-        MockInvite.objects.filter.return_value.count.return_value = 0
-        MockSA.objects.filter.return_value.count.return_value = 0
-        MockApp.objects.filter.return_value.count.return_value = 0
+    ), patch(f"{_M}.ServiceAccount"), patch(f"{_M}.App"):
+        build_plan_detail(MagicMock())
 
-        plan = resolve_organisation_plan(None, _info(), organisation_id="org-1")
-
-    assert plan["seat_limit"] == 5
+    assert "seats_used" not in LIBRESEAL_LIMITS

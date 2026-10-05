@@ -38,7 +38,7 @@ type WorkloadIdentityKey = {
 
 type Verification = { valid: boolean; error?: string | null }
 
-const DOCS_LINK = 'https://docs.phase.dev/integrations/platforms/gcp-secret-manager'
+const DOCS_LINK = 'https://github.com/Dos2Locos/libreseal#readme'
 
 export const SetupGCPAuth = (props: {
   provider: ProviderType
@@ -87,7 +87,7 @@ export const SetupGCPAuth = (props: {
     )
   }, [projectNumber, projectNumberIsValid, nameIsCustom])
 
-  // Phase picks the pool and provider IDs, so the project number completes
+  // LibreSeal picks the pool and provider IDs, so the project number completes
   // the provider name; nothing has to be copied back from Google Cloud.
   const buildCredentials = async () => ({
     sealed_identity: identity!.sealedIdentity,
@@ -177,7 +177,7 @@ export const SetupGCPAuth = (props: {
       </div>
 
       <p className="text-neutral-500 text-sm">
-        Securely integrate Phase with your Google Cloud Platform (GCP) account using Workload
+        Securely integrate LibreSeal with your Google Cloud Platform (GCP) account using Workload
         Identity Federation (WIF).
       </p>
 
@@ -233,7 +233,7 @@ export const SetupGCPAuth = (props: {
 
           <div className="space-y-3">
             <div className="font-medium text-black dark:text-white">
-              2. Add the Phase public key to your Workload Identity Pool
+              2. Add the LibreSeal public key to your Workload Identity Pool
             </div>
             <GCPScriptTabs
               tabs={scriptTabs}

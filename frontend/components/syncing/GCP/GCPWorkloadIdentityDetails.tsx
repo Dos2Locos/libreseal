@@ -1,12 +1,12 @@
 import { FaCopy } from 'react-icons/fa'
 import CopyButton from '@/components/common/CopyButton'
-import { LogField } from '@/app/[team]/access/scim/_components/shared'
+import { LogField } from '@/components/common/LogField'
 import { parseJwks } from '@/utils/syncing/gcp'
 
 const shorten = (value: string) =>
   value.length > 24 ? `${value.slice(0, 12)}…${value.slice(-8)}` : value
 
-/** The public key (JWKS) Phase signs with for this credential, to compare
+/** The public key (JWKS) LibreSeal signs with for this credential, to compare
  * with the key uploaded to the Workload Identity provider. */
 export const GCPWorkloadIdentityDetails = (props: { credentials: Record<string, string> }) => {
   const jwks = props.credentials['jwks']

@@ -13,7 +13,6 @@ import { useUser } from '@/contexts/userContext'
 import { toast } from 'react-toastify'
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client'
 import { useRouter } from 'next/navigation'
-import { GetLicenseData } from '@/graphql/queries/organisation/getLicense.gql'
 import { CreateOrg } from '@/graphql/mutations/createOrganisation.gql'
 import GetOrganisations from '@/graphql/queries/getOrganisations.gql'
 import CheckOrganisationNameAvailability from '@/graphql/queries/organisation/checkOrgNameAvailable.gql'
@@ -30,7 +29,6 @@ import {
   encryptAccountRecovery,
 } from '@/utils/crypto'
 import { createApplication } from '@/utils/app'
-import { License } from '@/ee/billing/License'
 
 const bip39 = require('bip39')
 
@@ -47,7 +45,6 @@ const Onboard = () => {
   const [inputs, setInputs] = useState<Array<string>>([])
   const [step, setStep] = useState<number>(0)
 
-  const { data: licenseData } = useQuery(GetLicenseData)
   const [createOrganisation, { data, loading, error }] = useMutation(CreateOrg)
   const [checkOrganisationNameAvailability] = useLazyQuery(CheckOrganisationNameAvailability)
   const [verifyPassword] = useLazyQuery(VerifyPassword, { fetchPolicy: 'no-cache' })
@@ -60,20 +57,6 @@ const Onboard = () => {
   const errorToast = (message: string) => {
     toast.error(message)
   }
-
-  useEffect(() => {
-    if (licenseData?.license?.organisationName) {
-      setTeamName(licenseData.license.organisationName)
-      setTeamNameLock(true)
-
-      if (licenseData.license?.organisationOwner?.email === session?.user?.email) {
-        router.push(`/`)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [licenseData])
-
-  const licenseActivated = () => licenseData?.license?.isActivated
 
   // If the user logged in with "remember on this device", we already have
   // a deviceKey cached and can wrap this new org's keyring with it directly
@@ -350,7 +333,6 @@ const Onboard = () => {
 
   return (
     <main className="w-full min-h-[100dvh] flex flex-col justify-between">
-      {!licenseActivated() ? (
         <div className="mx-auto my-auto w-full max-w-4xl flex flex-col gap-y-16 py-24 md:py-40">
           <form
             onSubmit={incrementStep}
@@ -359,13 +341,11 @@ const Onboard = () => {
             <div className="flex flex-col w-full">
               {step >= 0 && (
                 <div className="text-black dark:text-white font-semibold text-2xl text-center">
-                  Welcome to Phase
+                  Welcome to LibreSeal
                 </div>
               )}
               <Stepper steps={steps} activeStep={step} />
             </div>
-
-            {licenseData?.license && <License license={licenseData.license} showExpiry={false} />}
 
             {step === 0 && (
               <TeamName name={teamName} setName={setTeamName} isLocked={teamNameLock} />
@@ -417,30 +397,6 @@ const Onboard = () => {
             </div>
           </form>
         </div>
-      ) : (
-        <div className="mx-auto my-auto w-full max-w-3xl flex flex-col gap-8 p-16 rounded-lg text-center items-center bg-zinc-200 dark:bg-zinc-800/40 ring-1 ring-inset ring-neutral-500/40 shadow-xl">
-          <LogoMark className="w-32 fill-black dark:fill-white" />
-
-          <div className="space-y-1">
-            <div className="text-black dark:text-white font-semibold text-2xl text-center">
-              Welcome to Phase at {licenseData.license.customerName}
-            </div>
-            <p className="text-neutral-500 text-base">
-              Your organisation admin has already set up this Phase instance.
-            </p>
-            <p className="text-neutral-500 text-base">
-              Please contact{' '}
-              <a href={`mailto:${licenseData.license.organisationOwner.email}`}>
-                <span className="text-emerald-400 font-medium">
-                  {licenseData.license.organisationOwner.fullName}
-                </span>{' '}
-                ({licenseData.license.organisationOwner.email}){' '}
-              </a>
-              for an invite to join this workspace.
-            </p>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

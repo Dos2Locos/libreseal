@@ -70,50 +70,18 @@ def _user_is_scim_managed(user):
 
 
 def revoke_lease_now(lease):
-    """Revoke a live dynamic-secret lease at the provider and cancel its
-    scheduled revocation job.
-
-    Must run BEFORE any DB mutation and fail closed: an FK cascade that
-    deletes the row leaves the scheduled job re-fetching a gone id, leaking
-    the provider credential forever.
+    """Dynamic secrets are not available in LibreSeal, so provider-side lease
+    revocation cannot be performed. Leases can only exist in a database
+    migrated from Phase. Fail closed: refuse the operation rather than delete
+    the only record of credentials that are still live at the provider.
     """
-    import django_rq
-
-    from ee.integrations.secrets.dynamic.exceptions import LeaseAlreadyRevokedError
-
-    if lease.secret.provider != "aws":
-        logger.warning(
-            "Unknown dynamic secret provider %s for lease %s — skipping revoke",
-            lease.secret.provider,
-            lease.id,
-        )
-        return
-
-    from ee.integrations.secrets.dynamic.aws.utils import (
-        revoke_aws_dynamic_secret_lease,
+    raise GraphQLError(
+        "This account has active dynamic secret leases from a migrated Phase "
+        "instance. LibreSeal cannot revoke them at the provider. Revoke the "
+        "credentials at the provider, then have a server administrator run "
+        "`python manage.py libreseal_remove_legacy_credentials --yes "
+        "--credentials-revoked` before deleting the account."
     )
-
-    try:
-        revoke_aws_dynamic_secret_lease(lease.id, manual=True)
-    except LeaseAlreadyRevokedError:
-        pass  # idempotent retry
-    except Exception:
-        logger.exception("Failed to revoke dynamic secret lease %s", lease.id)
-        raise GraphQLError(
-            "Failed to revoke active dynamic credentials. Please try again."
-        )
-
-    if lease.cleanup_job_id:
-        try:
-            scheduler = django_rq.get_scheduler("scheduled-jobs")
-            scheduler.cancel(lease.cleanup_job_id)
-        except Exception:
-            # Best-effort: the orphaned job no-ops against a revoked lease.
-            logger.warning(
-                "Failed to cancel cleanup job %s for lease %s",
-                lease.cleanup_job_id,
-                lease.id,
-            )
 
 
 class DeleteAccountMutation(graphene.Mutation):
@@ -239,23 +207,6 @@ class DeleteAccountMutation(graphene.Mutation):
                 )
 
             def _post_commit():
-                if settings.APP_HOST == "cloud":
-                    from ee.billing.stripe import update_stripe_subscription_seats
-
-                    for organisation in organisations:
-                        # Guard each org so one failure can't skip the rest
-                        # or the account-deleted email below. (The callee
-                        # raises ValueError for orgs with no Stripe
-                        # subscription.)
-                        try:
-                            update_stripe_subscription_seats(organisation)
-                        except Exception:
-                            logger.exception(
-                                "Failed to update Stripe seats for org %s "
-                                "after account deletion",
-                                organisation.id,
-                            )
-
                 from api.emails import send_account_deleted_email
 
                 try:

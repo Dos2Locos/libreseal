@@ -1,7 +1,6 @@
 import { FaCog, FaEdit, FaTimes, FaTrash, FaUserCog } from 'react-icons/fa'
 import GenericDialog from '../common/GenericDialog'
 import {
-  ApiOrganisationPlanChoices,
   EnvironmentType,
   OrganisationMemberType,
 } from '@/apollo/graphql'
@@ -18,9 +17,6 @@ import { toast } from 'react-toastify'
 import { Avatar } from '../common/Avatar'
 import Link from 'next/link'
 import { organisationContext } from '@/contexts/organisationContext'
-import { isCloudHosted } from '@/utils/appConfig'
-import { UpgradeRequestForm } from '../forms/UpgradeRequestForm'
-import { UpsellDialog } from '../settings/organisation/UpsellDialog'
 import { userHasPermission } from '@/utils/access/permissions'
 import { sanitizeInput } from '@/utils/environment'
 
@@ -34,8 +30,7 @@ const RenameEnvironment = (props: { environment: EnvironmentType }) => {
     true
   )
 
-  const allowRename =
-    organisation?.plan !== ApiOrganisationPlanChoices.Fr && userCanUpdateEnvironments
+  const allowRename = userCanUpdateEnvironments
 
   const [name, setName] = useState(props.environment?.name || '')
 
@@ -65,9 +60,7 @@ const RenameEnvironment = (props: { environment: EnvironmentType }) => {
       <Alert variant="info" size="sm">
         {allowRename
           ? 'Changing the name of this Environment will affect how you construct references to secrets.'
-          : organisation?.plan === ApiOrganisationPlanChoices.Fr
-            ? 'Upgrade to Pro to rename Environments'
-            : "You don't have the permissions required to rename this Environment"}
+          : "You don't have the permissions required to rename this Environment"}
       </Alert>
 
       <div className="space-y-2">
@@ -107,12 +100,6 @@ const DeleteEnvironment = (props: { environment: EnvironmentType }) => {
     true
   )
 
-  const planDisplay = {
-    planName: 'Free',
-    dialogTitle: 'Upgrade to Pro',
-    description: `The Free plan does not have access to custom environments. To delete, rename or create Environments, please upgrade to Pro.`,
-  }
-
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [name, setName] = useState('')
 
@@ -123,8 +110,6 @@ const DeleteEnvironment = (props: { environment: EnvironmentType }) => {
   const openModal = () => {
     setIsOpen(true)
   }
-
-  const allowedByPlan = organisation?.plan !== ApiOrganisationPlanChoices.Fr
 
   const [deleteEnvironment, { loading }] = useMutation(DeleteEnv)
 
@@ -140,21 +125,6 @@ const DeleteEnvironment = (props: { environment: EnvironmentType }) => {
     toast.success('Environment deleted!')
     closeModal()
   }
-
-  if (!allowedByPlan)
-    return (
-      <div className="flex justify-end pt-4">
-        <UpsellDialog
-          title="Upgrade to Pro to customize environments"
-          buttonLabel={
-            <>
-              <FaTrash /> Delete
-            </>
-          }
-          buttonVariant="danger"
-        />
-      </div>
-    )
 
   if (!userCanDeleteEnvironments) return <></>
 

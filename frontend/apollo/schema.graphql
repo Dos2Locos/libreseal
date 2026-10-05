@@ -5,15 +5,12 @@ type Query {
   networkAccessPolicies(organisationId: ID): [NetworkAccessPolicyType]
   identities(organisationId: ID): [IdentityType]
   teams(organisationId: ID, teamId: ID): [TeamType]
-  scimTokens(organisationId: ID): [SCIMTokenType]
-  scimEvents(organisationId: ID, start: BigInt, end: BigInt, eventTypes: [String], tokenId: ID, status: String): SCIMEventsResponseType
   organisationNameAvailable(name: String): Boolean
+  libresealFeatures: [String!]!
   accountDeletionReadiness: AccountDeletionReadinessType
   accountIdentities: AccountIdentitiesType
   mfaStatus: MfaStatusType
   verifyPassword(authHash: String!): Boolean
-  license: PhaseLicenseType
-  organisationLicense(organisationId: ID): ActivatedPhaseLicenseType
   organisationPlan(organisationId: ID): OrganisationPlanType
   organisationMembers(organisationId: ID, memberId: ID, role: [String]): [OrganisationMemberType]
   organisationGlobalAccessUsers(organisationId: ID): [OrganisationMemberType]
@@ -66,22 +63,6 @@ type Query {
   testNomadCreds(credentialId: ID): Boolean
   validateAwsAssumeRoleAuth: AWSValidationResultType
   validateAwsAssumeRoleCredentials(roleArn: String!, region: String, externalId: String): AWSValidationResultType
-  stripeCheckoutDetails(stripeSessionId: String!, organisationId: ID!): StripeCheckoutDetails
-  stripeSubscriptionDetails(organisationId: ID): StripeSubscriptionDetails
-  stripeCustomerPortalUrl(organisationId: ID!): String
-  estimateStripeSubscription(organisationId: ID!, planType: PlanTypeEnum!, billingPeriod: BillingPeriodEnum!, previewV2: Boolean = false): StripePlanEstimate
-  dynamicSecretProviders: [DynamicSecretProviderType]
-  dynamicSecrets(secretId: ID, appId: ID, envId: ID, path: String, orgId: ID): [DynamicSecretType]
-  dynamicSecretCloneSpec(sourceDynamicSecretId: ID!): DynamicSecretCloneSpecType
-  rotationProviders: [RotationProviderType]
-  rotatingSecrets(secretId: ID, appId: ID, envId: ID, path: String, orgId: ID): [RotatingSecretType]
-  rotationProviderImportTemplate(providerId: String!, authenticationId: ID!, templateRef: String!): GenericScalar
-  openaiProjects(authenticationId: ID!): [OpenAIProjectType]
-  rotationCloneSpec(sourceRotatingSecretId: ID!): RotationCloneSpecType
-  logStreams(organisationId: ID!): [LogStreamType]
-  logStreamDeliveries(streamId: ID!, limit: Int, offset: Int, status: String): LogStreamDeliveryHistoryType
-  logStreamProviders: [LogStreamProviderType]
-  logStreamSources: [LogStreamSourceType]
 }
 
 type OrganisationType {
@@ -214,7 +195,6 @@ type EnvironmentType {
   updatedAt: DateTime!
   folders: [SecretFolderType]!
   secrets(path: String): [SecretType]!
-  dynamicSecrets(path: String): [DynamicSecretType]!
   folderCount: Int
   secretCount: Int
   members: [OrganisationMemberType]!
@@ -494,25 +474,18 @@ type PersonalSecretType {
   updatedAt: DateTime!
 }
 
-type DynamicSecretType {
+type EnvironmentSyncType {
   id: String!
-  name: String!
-  description: String!
   environment: EnvironmentType!
-  folder: SecretFolderType
   path: String!
+  options: JSONString!
   authentication: ProviderCredentialsType
-
-  """Which provider this secret is associated with."""
-  provider: ApiDynamicSecretProviderChoices!
-  config: DynamicSecretConfigUnion
-  keyMap: [KeyMap]
+  isActive: Boolean!
   createdAt: DateTime
-  updatedAt: DateTime!
-  deletedAt: DateTime
-  leases: [DynamicSecretLeaseType!]!
-  defaultTtlSeconds: Int
-  maxTtlSeconds: Int
+  lastSync: DateTime
+  status: ApiEnvironmentSyncStatusChoices!
+  serviceInfo: ServiceType
+  history: [EnvironmentSyncEventType!]!
 }
 
 type ProviderCredentialsType {
@@ -533,124 +506,6 @@ type ProviderType {
   nonSensitiveCredentials: [String!]
   endpointCredentials: [String!]
   authScheme: String
-}
-
-"""An enumeration."""
-enum ApiDynamicSecretProviderChoices {
-  """AWS"""
-  AWS
-}
-
-union DynamicSecretConfigUnion = AWSConfigType
-
-type AWSConfigType {
-  usernameTemplate: String!
-  iamPath: String
-  permissionBoundaryArn: String
-  groups: String
-  policyArns: String
-  policyDocument: GenericScalar
-}
-
-"""
-The `GenericScalar` scalar type represents a generic
-GraphQL scalar value that could be:
-String, Boolean, Int, Float, List or Object.
-"""
-scalar GenericScalar
-
-type KeyMap {
-  id: String
-  keyName: String
-  masked: Boolean
-}
-
-type DynamicSecretLeaseType {
-  id: String!
-  name: String!
-  secret: DynamicSecretType!
-  organisationMember: OrganisationMemberType
-  serviceAccount: ServiceAccountType
-  ttl: Int
-
-  """Current status of the lease"""
-  status: ApiDynamicSecretLeaseStatusChoices!
-  credentials: LeaseCredentialsUnion
-  createdAt: DateTime
-  expiresAt: DateTime
-  revokedAt: DateTime
-  deletedAt: DateTime
-  events: [DynamicSecretLeaseEventType]
-}
-
-"""An enumeration."""
-enum ApiDynamicSecretLeaseStatusChoices {
-  """Created"""
-  CREATED
-
-  """Active"""
-  ACTIVE
-
-  """Renewed"""
-  RENEWED
-
-  """Revoked"""
-  REVOKED
-
-  """Expired"""
-  EXPIRED
-}
-
-union LeaseCredentialsUnion = AwsCredentialsType
-
-type AwsCredentialsType {
-  accessKeyId: String
-  secretAccessKey: String
-  username: String
-}
-
-type DynamicSecretLeaseEventType {
-  id: ID!
-  lease: DynamicSecretLeaseType!
-  eventType: ApiDynamicSecretLeaseEventEventTypeChoices!
-  organisationMember: OrganisationMemberType
-  serviceAccount: ServiceAccountType
-  ipAddress: String
-  userAgent: String
-  metadata: JSONString!
-  createdAt: DateTime!
-}
-
-"""An enumeration."""
-enum ApiDynamicSecretLeaseEventEventTypeChoices {
-  """Created"""
-  CREATED
-
-  """Active"""
-  ACTIVE
-
-  """Renewed"""
-  RENEWED
-
-  """Revoked"""
-  REVOKED
-
-  """Expired"""
-  EXPIRED
-}
-
-type EnvironmentSyncType {
-  id: String!
-  environment: EnvironmentType!
-  path: String!
-  options: JSONString!
-  authentication: ProviderCredentialsType
-  isActive: Boolean!
-  createdAt: DateTime
-  lastSync: DateTime
-  status: ApiEnvironmentSyncStatusChoices!
-  serviceInfo: ServiceType
-  history: [EnvironmentSyncEventType!]!
 }
 
 """An enumeration."""
@@ -723,96 +578,6 @@ type UserTokenType {
   createdBy: OrganisationMemberType
 }
 
-type SCIMTokenType {
-  id: String!
-  name: String!
-  tokenPrefix: String!
-  createdBy: OrganisationMemberType
-  createdAt: DateTime
-  expiresAt: DateTime
-  lastUsedAt: DateTime
-  isActive: Boolean!
-}
-
-type SCIMEventsResponseType {
-  events: [SCIMEventType]
-  count: Int
-}
-
-type SCIMEventType {
-  id: String!
-  scimToken: SCIMTokenType
-  eventType: ApiSCIMEventEventTypeChoices!
-  status: ApiSCIMEventStatusChoices!
-  resourceType: ApiSCIMEventResourceTypeChoices!
-  resourceId: String!
-  resourceName: String!
-  detail: JSONString!
-  requestMethod: String!
-  requestPath: String!
-  requestBody: JSONString
-  responseStatus: Int
-  responseBody: JSONString
-  ipAddress: String
-  userAgent: String
-  timestamp: DateTime!
-}
-
-"""An enumeration."""
-enum ApiSCIMEventEventTypeChoices {
-  """User Created"""
-  USER_CREATED
-
-  """User Updated"""
-  USER_UPDATED
-
-  """User Deactivated"""
-  USER_DEACTIVATED
-
-  """User Reactivated"""
-  USER_REACTIVATED
-
-  """Group Created"""
-  GROUP_CREATED
-
-  """Group Updated"""
-  GROUP_UPDATED
-
-  """Group Deleted"""
-  GROUP_DELETED
-
-  """Member Added to Group"""
-  MEMBER_ADDED
-
-  """Member Removed from Group"""
-  MEMBER_REMOVED
-}
-
-"""An enumeration."""
-enum ApiSCIMEventStatusChoices {
-  """Success"""
-  SUCCESS
-
-  """Error"""
-  ERROR
-}
-
-"""An enumeration."""
-enum ApiSCIMEventResourceTypeChoices {
-  """User"""
-  USER
-
-  """Group"""
-  GROUP
-}
-
-"""
-The `BigInt` scalar type represents non-fractional whole numeric values.
-`BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
-compatible type.
-"""
-scalar BigInt
-
 type AccountDeletionReadinessType {
   canDelete: Boolean!
   requiresReauth: Boolean!
@@ -870,64 +635,6 @@ type MfaStatusType {
   recoveryCodesRemaining: Int!
 }
 
-type PhaseLicenseType {
-  id: String
-  customerName: String
-  organisationName: String
-  plan: PlanTier
-  seats: Int
-  tokens: Int
-  issuedAt: Date
-  expiresAt: Date
-  environment: String
-  licenseType: String
-  signatureDate: String
-  issuingAuthority: String
-  isActivated: Boolean
-  organisationOwner: OrganisationMemberType
-}
-
-enum PlanTier {
-  PRO_PLAN
-  ENTERPRISE_PLAN
-}
-
-"""
-The `Date` scalar type represents a Date
-value as specified by
-[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
-"""
-scalar Date
-
-type ActivatedPhaseLicenseType {
-  id: String!
-  customerName: String!
-  organisation: OrganisationType!
-  plan: ApiActivatedPhaseLicensePlanChoices!
-  seats: Int
-  tokens: Int
-  metadata: JSONString!
-  environment: String!
-  licenseType: String!
-  signatureDate: Date!
-  issuingAuthority: String!
-  issuedAt: DateTime!
-  expiresAt: DateTime!
-  activatedAt: DateTime!
-}
-
-"""An enumeration."""
-enum ApiActivatedPhaseLicensePlanChoices {
-  """Free"""
-  FR
-
-  """Pro"""
-  PR
-
-  """Enterprise"""
-  EN
-}
-
 type OrganisationMemberInviteType {
   id: String!
   organisation: OrganisationType!
@@ -969,6 +676,13 @@ interface Node {
   """The ID of the object"""
   id: ID!
 }
+
+"""
+The `BigInt` scalar type represents non-fractional whole numeric values.
+`BigInt` is not constrained to 32-bit like the `Int` type and thus is a less
+compatible type.
+"""
+scalar BigInt
 
 type SecretLogsResponseType {
   logs: [SecretEventType]
@@ -1293,371 +1007,6 @@ type AWSValidationResultType {
   assumedRoleArn: String
 }
 
-type StripeCheckoutDetails {
-  paymentStatus: String
-  customerEmail: String
-  billingStartDate: String
-  billingEndDate: String
-  subscriptionId: String
-  planName: String
-}
-
-type StripeSubscriptionDetails {
-  subscriptionId: String
-  planName: String
-  status: String
-  nextPaymentAmount: Float
-  currentPeriodStart: Int
-  currentPeriodEnd: Int
-  renewalDate: Int
-  cancelAt: Int
-  cancelAtPeriodEnd: Boolean
-  paymentMethods: [PaymentMethodDetails]
-  billingPeriod: BillingPeriodEnum
-  planType: PlanTypeEnum
-}
-
-type PaymentMethodDetails {
-  id: String
-  brand: String
-  last4: String
-  expMonth: Int
-  expYear: Int
-  isDefault: Boolean
-}
-
-enum BillingPeriodEnum {
-  MONTHLY
-  YEARLY
-}
-
-enum PlanTypeEnum {
-  PRO
-  ENTERPRISE
-}
-
-type StripePlanEstimate {
-  estimatedTotal: Float
-  seatCount: Int
-  unitPrice: Float
-  currency: String
-  priceId: String
-}
-
-type DynamicSecretProviderType {
-  id: String!
-  name: String!
-  credentials: GenericScalar!
-  configMap: GenericScalar!
-}
-
-"""Sanitised prefill payload — plaintext key names, no credential values."""
-type DynamicSecretCloneSpecType {
-  provider: String!
-  authenticationId: String
-  authenticationName: String
-  config: GenericScalar
-  keyMap: [DynamicSecretCloneKeyMapEntry]!
-  name: String!
-  description: String
-  defaultTtlSeconds: Int!
-  maxTtlSeconds: Int!
-  sourceEnvironmentId: String!
-  sourceEnvironmentName: String!
-}
-
-"""
-One output → plaintext key name pairing, ready to seed CreateDynamicSecret.
-"""
-type DynamicSecretCloneKeyMapEntry {
-  id: String!
-  keyName: String!
-}
-
-type RotationProviderType {
-  id: String!
-  name: String!
-  credentialSchema: GenericScalar!
-  configSchema: GenericScalar!
-  outputSchema: GenericScalar!
-}
-
-type RotatingSecretType {
-  id: String!
-  name: String!
-  description: String!
-  environment: EnvironmentType!
-  folder: SecretFolderType
-  path: String!
-
-  """
-  Rotation provider id (resolved against the rotation provider registry).
-  """
-  provider: String!
-  authentication: ProviderCredentialsType
-  config: GenericScalar
-  keyMap: [KeyMapEntry]
-  nextRotationAt: DateTime
-  isActive: Boolean!
-  health: ApiRotatingSecretHealthChoices!
-  lastFailureAt: DateTime
-  lastFailureReason: String!
-  consecutiveFailureCount: Int!
-  createdAt: DateTime
-  updatedAt: DateTime!
-  rotationIntervalSeconds: Int
-  revocationDelaySeconds: Int
-  pausedRemainingSeconds: Int
-  credentials: [RotatingSecretCredentialType]
-  events: [RotatingSecretEventType]
-  activeCredential: RotatingSecretCredentialType
-}
-
-type KeyMapEntry {
-  id: String
-  keyName: String
-  keyDigest: String
-  masked: Boolean
-}
-
-"""An enumeration."""
-enum ApiRotatingSecretHealthChoices {
-  """Healthy"""
-  HEALTHY
-
-  """Degraded"""
-  DEGRADED
-
-  """Failed"""
-  FAILED
-}
-
-type RotatingSecretCredentialType {
-  id: String!
-  rotatingSecret: RotatingSecretType!
-  status: ApiRotatingSecretCredentialStatusChoices!
-  providerCredentialId: String!
-  metadata: GenericScalar
-  failureCount: Int!
-  lastFailureReason: String!
-  createdAt: DateTime
-  expireAt: DateTime
-  revokedAt: DateTime
-  events: [RotatingSecretEventType]
-}
-
-"""An enumeration."""
-enum ApiRotatingSecretCredentialStatusChoices {
-  """Pending"""
-  PENDING
-
-  """Active"""
-  ACTIVE
-
-  """Expiring"""
-  EXPIRING
-
-  """Revoking"""
-  REVOKING
-
-  """Revoked"""
-  REVOKED
-
-  """Mint Failed"""
-  MINT_FAILED
-
-  """Revoke Failed"""
-  REVOKE_FAILED
-}
-
-type RotatingSecretEventType {
-  id: ID!
-  rotatingSecret: RotatingSecretType!
-  credential: RotatingSecretCredentialType
-  eventType: ApiRotatingSecretEventEventTypeChoices!
-  organisationMember: OrganisationMemberType
-  serviceAccount: ServiceAccountType
-  ipAddress: String
-  userAgent: String
-  metadata: GenericScalar
-  createdAt: DateTime!
-}
-
-"""An enumeration."""
-enum ApiRotatingSecretEventEventTypeChoices {
-  """Config Created"""
-  CONFIG_CREATED
-
-  """Config Updated"""
-  CONFIG_UPDATED
-
-  """Rotated"""
-  ROTATED
-
-  """Mint Attempted"""
-  MINT_ATTEMPTED
-
-  """Mint Failed"""
-  MINT_FAILED
-
-  """Revoke Attempted"""
-  REVOKE_ATTEMPTED
-
-  """Revoked"""
-  REVOKED
-
-  """Revoke Failed"""
-  REVOKE_FAILED
-
-  """Orphaned Credential"""
-  ORPHANED_CREDENTIAL
-
-  """Paused"""
-  PAUSED
-
-  """Resumed"""
-  RESUMED
-
-  """Manual Rotate"""
-  MANUAL_ROTATE
-
-  """Health Degraded"""
-  HEALTH_DEGRADED
-
-  """Health Failed"""
-  HEALTH_FAILED
-
-  """Health Recovered"""
-  HEALTH_RECOVERED
-}
-
-type OpenAIProjectType {
-  id: String!
-  name: String!
-  status: String
-}
-
-"""Sanitised prefill payload — plaintext key names, no credential values."""
-type RotationCloneSpecType {
-  provider: String!
-  authenticationId: String
-  authenticationName: String
-  config: GenericScalar
-  keyMap: [RotationCloneKeyMapEntry]!
-  name: String!
-  description: String
-  rotationIntervalSeconds: Int!
-  revocationDelaySeconds: Int!
-  sourceEnvironmentId: String!
-  sourceEnvironmentName: String!
-}
-
-"""
-One output → plaintext key name pairing, ready to seed CreateRotatingSecret.
-"""
-type RotationCloneKeyMapEntry {
-  id: String!
-  keyName: String!
-}
-
-type LogStreamType {
-  id: String!
-  name: String!
-
-  """
-  Log stream adapter id (resolved against the log stream adapter registry).
-  """
-  provider: String!
-  authentication: ProviderCredentialsType
-  sources: [String!]!
-  options: JSONString!
-
-  """
-  Delivery attempts per chunk before it is recorded as failed and skipped.
-  """
-  maxAttempts: Int!
-  isActive: Boolean!
-  health: ApiLogStreamHealthChoices!
-  pausedReason: String!
-  lastShippedAt: DateTime
-  lastFailureAt: DateTime
-  lastFailureReason: String!
-  createdAt: DateTime
-  updatedAt: DateTime!
-  providerInfo: LogStreamProviderType
-  sourceLags: [LogStreamSourceLagType!]!
-  unresolvedFailures: Int!
-  deliverySummary: LogStreamDeliverySummaryType
-  destinationUrl: String
-}
-
-"""An enumeration."""
-enum ApiLogStreamHealthChoices {
-  """Healthy"""
-  HEALTHY
-
-  """Degraded"""
-  DEGRADED
-}
-
-type LogStreamProviderType {
-  id: String!
-  name: String!
-  credentialsProvider: ProviderType
-  maxEventAgeHours: Float
-}
-
-type LogStreamSourceLagType {
-  source: String!
-  name: String!
-  lagSeconds: Int!
-}
-
-"""Delivery counts over the last 24 hours."""
-type LogStreamDeliverySummaryType {
-  completed: Int!
-  failed: Int!
-}
-
-type LogStreamDeliveryHistoryType {
-  events: [LogStreamDeliveryEventType]
-  count: Int
-}
-
-type LogStreamDeliveryEventType {
-  id: String!
-  source: String!
-  status: ApiLogStreamDeliveryEventStatusChoices!
-  eventCount: Int!
-  payloadBytes: Int!
-  attempts: Int!
-  cursorFrom: DateTime
-  cursorTo: DateTime
-  retriedFrom: LogStreamDeliveryEventType
-  resolvedAt: DateTime
-  meta: JSONString
-  createdAt: DateTime
-  completedAt: DateTime
-}
-
-"""An enumeration."""
-enum ApiLogStreamDeliveryEventStatusChoices {
-  """Completed"""
-  COMPLETED
-
-  """Failed"""
-  FAILED
-
-  """Skipped"""
-  SKIPPED
-}
-
-type LogStreamSourceType {
-  id: String!
-  name: String!
-  description: String!
-}
-
 type Mutation {
   createOrganisation(id: ID!, identityKey: String!, name: String!, wrappedKeyring: String!, wrappedRecovery: String!): CreateOrganisationMutation
   bulkInviteOrganisationMembers(invites: [InviteInput]!, orgId: ID!): BulkInviteOrganisationMembersMutation
@@ -1780,14 +1129,6 @@ type Mutation {
   addTeamApps(appEnvs: [AppEnvironmentInput!]!, teamId: ID!): AddTeamAppsMutation
   removeTeamApp(appId: ID!, teamId: ID!): RemoveTeamAppMutation
   updateTeamAppEnvironments(appId: ID!, envIds: [ID!]!, teamId: ID!): UpdateTeamAppEnvironmentsMutation
-  createScimToken(expiryDays: Int, name: String!, organisationId: ID!): CreateSCIMTokenMutation
-  deleteScimToken(tokenId: ID!): DeleteSCIMTokenMutation
-
-  """Master switch: enable/disable SCIM for the organisation."""
-  toggleScim(enabled: Boolean!, organisationId: ID!): ToggleSCIMMutation
-
-  """Per-provider toggle: enable/disable a single SCIM token."""
-  toggleScimToken(isActive: Boolean!, tokenId: ID!): ToggleSCIMTokenMutation
   createServiceAccount(handlers: [ServiceAccountHandlerInput], identityKey: String, name: String, organisationId: ID, roleId: ID, serverWrappedKeyring: String, serverWrappedRecovery: String, teamId: ID): CreateServiceAccountMutation
   enableServiceAccountServerSideKeyManagement(serverWrappedKeyring: String, serverWrappedRecovery: String, serviceAccountId: ID): EnableServiceAccountServerSideKeyManagementMutation
   enableServiceAccountClientSideKeyManagement(serviceAccountId: ID): EnableServiceAccountClientSideKeyManagementMutation
@@ -1860,43 +1201,6 @@ type Mutation {
   createOverride(overrideData: PersonalSecretInput): CreatePersonalSecretMutation
   removeOverride(secretId: ID): DeletePersonalSecretMutation
   createLockbox(input: LockboxInput): CreateLockboxMutation
-  createSubscriptionCheckoutSession(billingPeriod: BillingPeriodEnum, organisationId: ID!, planType: PlanTypeEnum): CreateSubscriptionCheckoutSession
-  deletePaymentMethod(organisationId: ID, paymentMethodId: String): DeletePaymentMethodMutation
-  cancelSubscription(organisationId: ID, subscriptionId: String!): UpdateSubscriptionResponse
-  resumeSubscription(organisationId: ID, subscriptionId: String!): UpdateSubscriptionResponse
-  modifySubscription(billingPeriod: BillingPeriodEnum, organisationId: ID!, planType: PlanTypeEnum, subscriptionId: String!): UpdateSubscriptionResponse
-  createSetupIntent(organisationId: ID): CreateSetupIntentMutation
-  setDefaultPaymentMethod(
-    organisationId: ID
-
-    """Payment Method ID to set as default"""
-    paymentMethodId: String!
-  ): SetDefaultPaymentMethodMutation
-  migratePricing(organisationId: ID!): MigratePricingMutation
-  createAwsDynamicSecret(authenticationId: ID, config: AWSConfigInput!, defaultTtl: Int, description: String, environmentId: ID!, keyMap: [KeyMapInput]!, maxTtl: Int, name: String!, organisationId: ID!, path: String): CreateAWSDynamicSecretMutation
-  updateAwsDynamicSecret(authenticationId: ID, config: AWSConfigInput!, defaultTtl: Int, description: String, dynamicSecretId: ID!, keyMap: [KeyMapInput]!, maxTtl: Int, name: String!, organisationId: ID!, path: String): UpdateAWSDynamicSecretMutation
-  deleteDynamicSecret(secretId: ID!): DeleteDynamicSecretMutation
-  createDynamicSecretLease(name: String, secretId: ID!, ttl: Int): LeaseDynamicSecret
-  renewDynamicSecretLease(leaseId: ID!, ttl: Int): RenewLeaseMutation
-  revokeDynamicSecretLease(leaseId: ID!): RevokeLeaseMutation
-  createRotatingSecret(authenticationId: ID!, config: GenericScalar!, description: String, environmentId: ID!, keyMap: [KeyMapInput]!, name: String!, organisationId: ID!, path: String, provider: String!, revocationDelaySeconds: Int, rotationIntervalSeconds: Int!): CreateRotatingSecretMutation
-  updateRotatingSecret(authenticationId: ID, config: GenericScalar, description: String, isActive: Boolean, name: String, revocationDelaySeconds: Int, rotatingSecretId: ID!, rotationIntervalSeconds: Int): UpdateRotatingSecretMutation
-  deleteRotatingSecret(rotatingSecretId: ID!): DeleteRotatingSecretMutation
-  rotateRotatingSecret(rotatingSecretId: ID!): ManualRotateRotatingSecretMutation
-  revokeRotatingSecretCredential(credentialId: ID!): RevokeRotatingSecretCredentialMutation
-  pauseRotatingSecret(rotatingSecretId: ID!): PauseRotatingSecretMutation
-  resumeRotatingSecret(rotatingSecretId: ID!): ResumeRotatingSecretMutation
-
-  """
-  Probe a provider with encrypted root credentials before they are persisted.
-  """
-  validateRotationCredentials(credentials: JSONString!, organisationId: ID!, providerId: String!): ValidateRotationCredentialsMutation
-  createLogStream(credentialId: ID!, gzip: Boolean, maxAttempts: Int, name: String!, organisationId: ID!, provider: String!, service: String, sources: [String!]!, tags: String): CreateLogStreamMutation
-  updateLogStream(credentialId: ID!, gzip: Boolean, maxAttempts: Int, name: String!, service: String, sources: [String!]!, streamId: ID!, tags: String): UpdateLogStreamMutation
-  toggleLogStream(streamId: ID!): ToggleLogStreamMutation
-  deleteLogStream(streamId: ID!): DeleteLogStreamMutation
-  testLogStreamConnection(credentialId: ID!, gzip: Boolean, organisationId: ID!, provider: String!, service: String, tags: String): TestLogStreamConnectionMutation
-  retryLogStreamDelivery(deliveryEventId: ID!): RetryLogStreamDeliveryMutation
 }
 
 type CreateOrganisationMutation {
@@ -2246,25 +1550,6 @@ type UpdateTeamAppEnvironmentsMutation {
   team: TeamType
 }
 
-type CreateSCIMTokenMutation {
-  token: String
-  scimToken: SCIMTokenType
-}
-
-type DeleteSCIMTokenMutation {
-  ok: Boolean
-}
-
-"""Master switch: enable/disable SCIM for the organisation."""
-type ToggleSCIMMutation {
-  ok: Boolean
-}
-
-"""Per-provider toggle: enable/disable a single SCIM token."""
-type ToggleSCIMTokenMutation {
-  ok: Boolean
-}
-
 type CreateServiceAccountMutation {
   serviceAccount: ServiceAccountType
 }
@@ -2537,131 +1822,4 @@ input LockboxInput {
   data: JSONString
   allowedViews: Int
   expiry: BigInt
-}
-
-type CreateSubscriptionCheckoutSession {
-  clientSecret: String
-}
-
-type DeletePaymentMethodMutation {
-  ok: Boolean
-}
-
-type UpdateSubscriptionResponse {
-  success: Boolean
-  message: String
-  cancelledAt: String
-  status: String
-}
-
-type CreateSetupIntentMutation {
-  clientSecret: String
-}
-
-type SetDefaultPaymentMethodMutation {
-  ok: Boolean
-}
-
-type MigratePricingMutation {
-  success: Boolean
-  message: String
-}
-
-type CreateAWSDynamicSecretMutation {
-  dynamicSecret: DynamicSecretType
-}
-
-input AWSConfigInput {
-  usernameTemplate: String!
-  iamPath: String = "/"
-  permissionBoundaryArn: String
-  groups: String
-  policyArns: String
-  policyDocument: GenericScalar
-}
-
-input KeyMapInput {
-  id: String!
-  keyName: String!
-}
-
-type UpdateAWSDynamicSecretMutation {
-  dynamicSecret: DynamicSecretType
-}
-
-type DeleteDynamicSecretMutation {
-  ok: Boolean
-}
-
-type LeaseDynamicSecret {
-  lease: DynamicSecretLeaseType
-}
-
-type RenewLeaseMutation {
-  lease: DynamicSecretLeaseType
-}
-
-type RevokeLeaseMutation {
-  lease: DynamicSecretLeaseType
-}
-
-type CreateRotatingSecretMutation {
-  rotatingSecret: RotatingSecretType
-}
-
-type UpdateRotatingSecretMutation {
-  rotatingSecret: RotatingSecretType
-}
-
-type DeleteRotatingSecretMutation {
-  ok: Boolean
-}
-
-type ManualRotateRotatingSecretMutation {
-  rotatingSecret: RotatingSecretType
-}
-
-type RevokeRotatingSecretCredentialMutation {
-  ok: Boolean
-}
-
-type PauseRotatingSecretMutation {
-  rotatingSecret: RotatingSecretType
-}
-
-type ResumeRotatingSecretMutation {
-  rotatingSecret: RotatingSecretType
-}
-
-"""
-Probe a provider with encrypted root credentials before they are persisted.
-"""
-type ValidateRotationCredentialsMutation {
-  valid: Boolean
-  error: String
-}
-
-type CreateLogStreamMutation {
-  logStream: LogStreamType
-}
-
-type UpdateLogStreamMutation {
-  logStream: LogStreamType
-}
-
-type ToggleLogStreamMutation {
-  logStream: LogStreamType
-}
-
-type DeleteLogStreamMutation {
-  ok: Boolean
-}
-
-type TestLogStreamConnectionMutation {
-  ok: Boolean
-  message: String
-}
-
-type RetryLogStreamDeliveryMutation {
-  ok: Boolean
 }

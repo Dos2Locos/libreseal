@@ -204,7 +204,7 @@ export default function Recovery(props: { params: Promise<{ team: string }> }) {
               Account Recovery
             </h1>
             <p className="text-black/30 dark:text-white/40 text-center text-sm sm:text-base">
-              This wizard will help you restore access to your Phase Account. Please enter your
+              This wizard will help you restore access to your LibreSeal Account. Please enter your
               recovery phrase below
               {skipPasswordStep
                 ? '.'

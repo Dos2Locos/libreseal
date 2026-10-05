@@ -53,7 +53,7 @@ const handleMfaError = (e: unknown, fallback: string) => {
 
 export const recoveryCodesFileContent = (email: string, codes: string[]) =>
   [
-    'Phase Console recovery codes',
+    'LibreSeal recovery codes',
     `Account: ${email}`,
     '',
     'Each code can be used once in place of an authenticator code.',

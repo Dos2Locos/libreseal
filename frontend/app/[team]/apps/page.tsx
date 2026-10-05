@@ -2,7 +2,7 @@
 
 import { useQuery } from '@apollo/client'
 import { GetApps } from '@/graphql/queries/getApps.gql'
-import { ApiOrganisationPlanChoices, AppType } from '@/apollo/graphql'
+import { AppType } from '@/apollo/graphql'
 import NewAppDialog from '@/components/apps/NewAppDialog'
 import { useContext, useEffect, useRef } from 'react'
 import { organisationContext } from '@/contexts/organisationContext'
@@ -13,9 +13,6 @@ import { FaBan, FaPlus } from 'react-icons/fa'
 import { FaBoxOpen } from 'react-icons/fa6'
 import { Button } from '@/components/common/Button'
 import { AppsView } from '@/components/apps/AppsView'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
-import { isCloudHosted } from '@/utils/appConfig'
 
 export default function AppsHome() {
   const { activeOrganisation: organisation } = useContext(organisationContext)
@@ -46,10 +43,8 @@ export default function AppsHome() {
 
   const apps = (data?.apps as AppType[]) ?? []
 
-  const allowNewApp = () => {
-    if (!organisation?.planDetail?.maxApps) return true
-    return userCanCreateApps && apps.length < organisation.planDetail?.maxApps
-  }
+  // LibreSeal has no app quota: creation is governed by RBAC only.
+  const allowNewApp = () => userCanCreateApps
 
   if (!organisation) return <></>
 
@@ -80,22 +75,6 @@ export default function AppsHome() {
                     <FaPlus />
                     Create an App{' '}
                   </Button>
-                ) : userCanCreateApps ? (
-                  <UpsellDialog
-                    buttonLabel={
-                      <>
-                        <FaPlus />
-                        Create an App
-                        <PlanLabel
-                          plan={
-                            isCloudHosted()
-                              ? ApiOrganisationPlanChoices.Pr
-                              : ApiOrganisationPlanChoices.En
-                          }
-                        />
-                      </>
-                    }
-                  />
                 ) : (
                   <></>
                 )}

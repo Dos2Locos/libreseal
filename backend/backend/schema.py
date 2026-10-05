@@ -10,81 +10,6 @@ from api.models import AuditEvent
 from api.utils.syncing.azure.key_vault import AzureKeyVaultSecretType
 from api.utils.syncing.gcp.secret_manager import GCPSecretType
 from api.utils.database import get_approximate_count
-from ee.integrations.secrets.dynamic.graphene.mutations import (
-    DeleteDynamicSecretMutation,
-    LeaseDynamicSecret,
-    RenewLeaseMutation,
-    RevokeLeaseMutation,
-)
-from ee.integrations.secrets.dynamic.graphene.types import (
-    DynamicSecretCloneSpecType,
-    DynamicSecretProviderType,
-    DynamicSecretType,
-)
-from ee.integrations.secrets.dynamic.aws.graphene.mutations import (
-    CreateAWSDynamicSecretMutation,
-    UpdateAWSDynamicSecretMutation,
-)
-from ee.integrations.secrets.dynamic.graphene.queries import (
-    resolve_dynamic_secret_clone_spec,
-    resolve_dynamic_secret_providers,
-    resolve_dynamic_secrets,
-)
-_ROTATION_AVAILABLE = False
-try:
-    from ee.integrations.secrets.rotation.graphene.types import (
-        OpenAIProjectType,
-        RotatingSecretType,
-        RotationCloneSpecType,
-        RotationProviderType,
-    )
-    from ee.integrations.secrets.rotation.graphene.queries import (
-        resolve_openai_projects,
-        resolve_rotating_secrets,
-        resolve_rotation_clone_spec,
-        resolve_rotation_provider_import_template,
-        resolve_rotation_providers,
-    )
-    from ee.integrations.secrets.rotation.graphene.mutations import (
-        CreateRotatingSecretMutation,
-        DeleteRotatingSecretMutation,
-        ManualRotateRotatingSecretMutation,
-        PauseRotatingSecretMutation,
-        ResumeRotatingSecretMutation,
-        RevokeRotatingSecretCredentialMutation,
-        UpdateRotatingSecretMutation,
-        ValidateRotationCredentialsMutation,
-    )
-
-    _ROTATION_AVAILABLE = True
-except ImportError:
-    pass
-_LOG_STREAMS_AVAILABLE = False
-try:
-    from ee.integrations.logs.streams.graphene.types import (
-        LogStreamDeliveryHistoryType,
-        LogStreamProviderType,
-        LogStreamSourceType,
-        LogStreamType,
-    )
-    from ee.integrations.logs.streams.graphene.queries import (
-        resolve_log_stream_deliveries,
-        resolve_log_stream_providers,
-        resolve_log_stream_sources,
-        resolve_log_streams,
-    )
-    from ee.integrations.logs.streams.graphene.mutations import (
-        CreateLogStreamMutation,
-        DeleteLogStreamMutation,
-        RetryLogStreamDeliveryMutation,
-        TestLogStreamConnectionMutation,
-        ToggleLogStreamMutation,
-        UpdateLogStreamMutation,
-    )
-
-    _LOG_STREAMS_AVAILABLE = True
-except ImportError:
-    pass
 from backend.graphene.mutations.service_accounts import (
     CreateServiceAccountMutation,
     CreateServiceAccountTokenMutation,
@@ -126,26 +51,6 @@ from .graphene.mutations.sso import (
     DeleteOrganisationSSOProviderMutation,
     TestOrganisationSSOProviderMutation,
     UpdateOrganisationSecurityMutation,
-)
-from ee.billing.graphene.queries.stripe import (
-    StripeCheckoutDetails,
-    StripeSubscriptionDetails,
-    StripePlanEstimate,
-    resolve_stripe_checkout_details,
-    resolve_stripe_subscription_details,
-    resolve_stripe_customer_portal_url,
-    resolve_estimate_stripe_subscription,
-)
-from ee.billing.graphene.types import BillingPeriodEnum, PlanTypeEnum
-from ee.billing.graphene.mutations.stripe import (
-    CancelSubscriptionMutation,
-    CreateSubscriptionCheckoutSession,
-    CreateSetupIntentMutation,
-    DeletePaymentMethodMutation,
-    ModifySubscriptionMutation,
-    ResumeSubscriptionMutation,
-    SetDefaultPaymentMethodMutation,
-    MigratePricingMutation,
 )
 from .graphene.mutations.lockbox import CreateLockboxMutation
 from .graphene.queries.syncing import (
@@ -192,27 +97,11 @@ from .graphene.queries.service_accounts import (
     resolve_app_service_accounts,
 )
 from .graphene.queries.quotas import resolve_organisation_plan
-from .graphene.queries.license import resolve_license, resolve_organisation_license
+from backend.edition import enabled_features
 from .graphene.queries.auth import resolve_verify_password
 from .graphene.queries.teams import resolve_teams
 
 
-_SCIM_AVAILABLE = False
-try:
-    from ee.authentication.scim.graphene.queries import (
-        resolve_scim_tokens,
-        resolve_scim_events,
-    )
-    from ee.authentication.scim.graphene.mutations import (
-        CreateSCIMTokenMutation,
-        DeleteSCIMTokenMutation,
-        ToggleSCIMMutation,
-        ToggleSCIMTokenMutation,
-    )
-
-    _SCIM_AVAILABLE = True
-except ImportError:
-    pass
 from .graphene.mutations.teams import (
     AddTeamAppsMutation,
     AddTeamMembersMutation,
@@ -317,7 +206,6 @@ from .graphene.types import (
     AccountDeletionReadinessType,
     AccountIdentitiesType,
     MfaStatusType,
-    ActivatedPhaseLicenseType,
     AppType,
     AuditEventType,
     AuditLogsResponseType,
@@ -333,7 +221,6 @@ from .graphene.types import (
     OrganisationPlanType,
     OrganisationSSOProviderType,
     OrganisationType,
-    PhaseLicenseType,
     ProviderCredentialsType,
     ProviderType,
     IdentityProviderType,
@@ -347,15 +234,12 @@ from .graphene.types import (
     ServiceAccountType,
     ServiceType,
     TeamType,
-    SCIMTokenType,
-    SCIMEventsResponseType,
     TimeRange,
     UserTokenType,
     AWSValidationResultType,
     IdentityType,
 )
 import graphene
-from graphene.types.generic import GenericScalar
 from graphql import GraphQLError
 from api.models import (
     Environment,
@@ -408,24 +292,12 @@ class Query(graphene.ObjectType):
         team_id=graphene.ID(required=False),
     )
 
-    # SCIM (Enterprise)
-    if _SCIM_AVAILABLE:
-        scim_tokens = graphene.List(
-            SCIMTokenType,
-            organisation_id=graphene.ID(),
-        )
-
-        scim_events = graphene.Field(
-            SCIMEventsResponseType,
-            organisation_id=graphene.ID(),
-            start=graphene.BigInt(required=False),
-            end=graphene.BigInt(required=False),
-            event_types=graphene.List(graphene.String, required=False),
-            token_id=graphene.ID(required=False),
-            status=graphene.String(required=False),
-        )
-
     organisation_name_available = graphene.Boolean(name=graphene.String())
+
+    # Features available in this LibreSeal edition (see backend/edition.py)
+    libreseal_features = graphene.NonNull(
+        graphene.List(graphene.NonNull(graphene.String))
+    )
 
     account_deletion_readiness = graphene.Field(AccountDeletionReadinessType)
 
@@ -434,12 +306,6 @@ class Query(graphene.ObjectType):
     mfa_status = graphene.Field(MfaStatusType)
 
     verify_password = graphene.Boolean(auth_hash=graphene.String(required=True))
-
-    license = graphene.Field(PhaseLicenseType)
-
-    organisation_license = graphene.Field(
-        ActivatedPhaseLicenseType, organisation_id=graphene.ID()
-    )
 
     organisation_plan = graphene.Field(
         OrganisationPlanType, organisation_id=graphene.ID()
@@ -638,83 +504,6 @@ class Query(graphene.ObjectType):
         external_id=graphene.String(),
     )
 
-    stripe_checkout_details = graphene.Field(
-        StripeCheckoutDetails,
-        stripe_session_id=graphene.String(required=True),
-        organisation_id=graphene.ID(required=True),
-    )
-
-    stripe_subscription_details = graphene.Field(
-        StripeSubscriptionDetails, organisation_id=graphene.ID()
-    )
-
-    stripe_customer_portal_url = graphene.String(
-        organisation_id=graphene.ID(required=True)
-    )
-
-    estimate_stripe_subscription = graphene.Field(
-        StripePlanEstimate,
-        organisation_id=graphene.ID(required=True),
-        plan_type=PlanTypeEnum(required=True),
-        billing_period=BillingPeriodEnum(required=True),
-        preview_v2=graphene.Boolean(default_value=False),
-    )
-
-    # Dynamic secrets
-    dynamic_secret_providers = graphene.List(DynamicSecretProviderType)
-    dynamic_secrets = graphene.List(
-        DynamicSecretType,
-        secret_id=graphene.ID(required=False),
-        app_id=graphene.ID(required=False),
-        env_id=graphene.ID(required=False),
-        path=graphene.String(required=False),
-        org_id=graphene.ID(),
-    )
-    dynamic_secret_clone_spec = graphene.Field(
-        DynamicSecretCloneSpecType,
-        source_dynamic_secret_id=graphene.ID(required=True),
-    )
-
-    # Rotating secrets (Enterprise)
-    if _ROTATION_AVAILABLE:
-        rotation_providers = graphene.List(RotationProviderType)
-        rotating_secrets = graphene.List(
-            RotatingSecretType,
-            secret_id=graphene.ID(required=False),
-            app_id=graphene.ID(required=False),
-            env_id=graphene.ID(required=False),
-            path=graphene.String(required=False),
-            org_id=graphene.ID(required=False),
-        )
-        rotation_provider_import_template = GenericScalar(
-            provider_id=graphene.String(required=True),
-            authentication_id=graphene.ID(required=True),
-            template_ref=graphene.String(required=True),
-        )
-        openai_projects = graphene.List(
-            OpenAIProjectType,
-            authentication_id=graphene.ID(required=True),
-        )
-        rotation_clone_spec = graphene.Field(
-            RotationCloneSpecType,
-            source_rotating_secret_id=graphene.ID(required=True),
-        )
-
-    # Log Streams (Enterprise)
-    if _LOG_STREAMS_AVAILABLE:
-        log_streams = graphene.List(
-            LogStreamType, organisation_id=graphene.ID(required=True)
-        )
-        log_stream_deliveries = graphene.Field(
-            LogStreamDeliveryHistoryType,
-            stream_id=graphene.ID(required=True),
-            limit=graphene.Int(required=False),
-            offset=graphene.Int(required=False),
-            status=graphene.String(required=False),
-        )
-        log_stream_providers = graphene.List(LogStreamProviderType)
-        log_stream_sources = graphene.List(LogStreamSourceType)
-
     # --------------------------------------------------------------------
 
     resolve_server_public_key = resolve_server_public_key
@@ -769,23 +558,6 @@ class Query(graphene.ObjectType):
         resolve_validate_aws_assume_role_credentials
     )
 
-    resolve_dynamic_secret_providers = resolve_dynamic_secret_providers
-    resolve_dynamic_secrets = resolve_dynamic_secrets
-    resolve_dynamic_secret_clone_spec = resolve_dynamic_secret_clone_spec
-
-    if _ROTATION_AVAILABLE:
-        resolve_rotation_providers = resolve_rotation_providers
-        resolve_rotating_secrets = resolve_rotating_secrets
-        resolve_rotation_provider_import_template = resolve_rotation_provider_import_template
-        resolve_openai_projects = resolve_openai_projects
-        resolve_rotation_clone_spec = resolve_rotation_clone_spec
-
-    if _LOG_STREAMS_AVAILABLE:
-        resolve_log_streams = resolve_log_streams
-        resolve_log_stream_deliveries = resolve_log_stream_deliveries
-        resolve_log_stream_providers = resolve_log_stream_providers
-        resolve_log_stream_sources = resolve_log_stream_sources
-
     def resolve_organisations(root, info):
         memberships = OrganisationMember.objects.filter(
             user=info.context.user, deleted_at=None
@@ -808,18 +580,13 @@ class Query(graphene.ObjectType):
     # Teams
     resolve_teams = resolve_teams
 
-    # SCIM (Enterprise)
-    if _SCIM_AVAILABLE:
-        resolve_scim_tokens = resolve_scim_tokens
-        resolve_scim_events = resolve_scim_events
-
     resolve_organisation_plan = resolve_organisation_plan
+
+    def resolve_libreseal_features(root, info):
+        return enabled_features()
 
     def resolve_organisation_name_available(root, info, name):
         return not Organisation.objects.filter(name__iexact=name).exists()
-
-    resolve_license = resolve_license
-    resolve_organisation_license = resolve_organisation_license
 
     resolve_verify_password = resolve_verify_password
 
@@ -1484,11 +1251,6 @@ class Query(graphene.ObjectType):
 
         return time_series_logs
 
-    resolve_stripe_checkout_details = resolve_stripe_checkout_details
-    resolve_stripe_subscription_details = resolve_stripe_subscription_details
-    resolve_stripe_customer_portal_url = resolve_stripe_customer_portal_url
-    resolve_estimate_stripe_subscription = resolve_estimate_stripe_subscription
-
 
 class Mutation(graphene.ObjectType):
     create_organisation = CreateOrganisationMutation.Field()
@@ -1560,13 +1322,6 @@ class Mutation(graphene.ObjectType):
     add_team_apps = AddTeamAppsMutation.Field()
     remove_team_app = RemoveTeamAppMutation.Field()
     update_team_app_environments = UpdateTeamAppEnvironmentsMutation.Field()
-
-    # SCIM (Enterprise)
-    if _SCIM_AVAILABLE:
-        create_scim_token = CreateSCIMTokenMutation.Field()
-        delete_scim_token = DeleteSCIMTokenMutation.Field()
-        toggle_scim = ToggleSCIMMutation.Field()
-        toggle_scim_token = ToggleSCIMTokenMutation.Field()
 
     # Service Accounts
     create_service_account = CreateServiceAccountMutation.Field()
@@ -1659,43 +1414,6 @@ class Mutation(graphene.ObjectType):
     # Lockbox
     create_lockbox = CreateLockboxMutation.Field()
 
-    # Billing
-    create_subscription_checkout_session = CreateSubscriptionCheckoutSession.Field()
-    delete_payment_method = DeletePaymentMethodMutation.Field()
-    cancel_subscription = CancelSubscriptionMutation.Field()
-    resume_subscription = ResumeSubscriptionMutation.Field()
-    modify_subscription = ModifySubscriptionMutation.Field()
-    create_setup_intent = CreateSetupIntentMutation.Field()
-    set_default_payment_method = SetDefaultPaymentMethodMutation.Field()
-    migrate_pricing = MigratePricingMutation.Field()
-
-    # Dynamic Secrets
-    create_aws_dynamic_secret = CreateAWSDynamicSecretMutation.Field()
-    update_aws_dynamic_secret = UpdateAWSDynamicSecretMutation.Field()
-    delete_dynamic_secret = DeleteDynamicSecretMutation.Field()
-    create_dynamic_secret_lease = LeaseDynamicSecret.Field()
-    renew_dynamic_secret_lease = RenewLeaseMutation.Field()
-    revoke_dynamic_secret_lease = RevokeLeaseMutation.Field()
-
-    # Rotating Secrets (Enterprise)
-    if _ROTATION_AVAILABLE:
-        create_rotating_secret = CreateRotatingSecretMutation.Field()
-        update_rotating_secret = UpdateRotatingSecretMutation.Field()
-        delete_rotating_secret = DeleteRotatingSecretMutation.Field()
-        rotate_rotating_secret = ManualRotateRotatingSecretMutation.Field()
-        revoke_rotating_secret_credential = RevokeRotatingSecretCredentialMutation.Field()
-        pause_rotating_secret = PauseRotatingSecretMutation.Field()
-        resume_rotating_secret = ResumeRotatingSecretMutation.Field()
-        validate_rotation_credentials = ValidateRotationCredentialsMutation.Field()
-
-    # Log Streams (Enterprise)
-    if _LOG_STREAMS_AVAILABLE:
-        create_log_stream = CreateLogStreamMutation.Field()
-        update_log_stream = UpdateLogStreamMutation.Field()
-        toggle_log_stream = ToggleLogStreamMutation.Field()
-        delete_log_stream = DeleteLogStreamMutation.Field()
-        test_log_stream_connection = TestLogStreamConnectionMutation.Field()
-        retry_log_stream_delivery = RetryLogStreamDeliveryMutation.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

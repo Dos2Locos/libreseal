@@ -24,6 +24,7 @@ from django.db import transaction
 from django.utils import timezone
 import graphene
 from graphql import GraphQLError
+from backend.edition import Feature, feature_enabled, unavailable_message
 
 
 def _role_ceiling_error(user, organisation, permissions, current_role=None):
@@ -65,11 +66,6 @@ class CreateCustomRoleMutation(graphene.Mutation):
     def mutate(cls, root, info, name, description, color, permissions, organisation_id):
         user = info.context.user
         org = Organisation.objects.get(id=organisation_id)
-
-        if org.plan == Organisation.FREE_PLAN:
-            raise GraphQLError(
-                "Custom roles are not available on your organisation's plan"
-            )
 
         if not user_has_permission(user, "create", "Roles", org):
             raise GraphQLError(
@@ -142,11 +138,6 @@ class UpdateCustomRoleMutation(graphene.Mutation):
 
         if role.is_default:
             raise GraphQLError("Default roles cannot be modified.")
-
-        if organisation.plan == Organisation.FREE_PLAN:
-            raise GraphQLError(
-                "Custom roles are not available on your organisation's plan"
-            )
 
         permissions = normalize_custom_role_permissions(permissions)
         permission_error = validate_custom_role_permissions(
@@ -255,6 +246,15 @@ class DeleteCustomRoleMutation(graphene.Mutation):
         return DeleteCustomRoleMutation(ok=True)
 
 
+def _ensure_network_policies_available():
+    """Network access policies cannot be enforced in LibreSeal (the upstream
+    verifier is Enterprise-licensed). Refuse configuring them so admins are
+    never led to believe an allowlist is active. Deleting policies and
+    unassigning them stays possible to clean up migrated data."""
+    if not feature_enabled(Feature.NETWORK_POLICIES):
+        raise GraphQLError(unavailable_message(Feature.NETWORK_POLICIES))
+
+
 class CreateNetworkAccessPolicyMutation(graphene.Mutation):
     class Arguments:
         name = graphene.String()
@@ -267,6 +267,7 @@ class CreateNetworkAccessPolicyMutation(graphene.Mutation):
     @classmethod
     def mutate(cls, root, info, name, allowed_ips, is_global, organisation_id):
         user = info.context.user
+        _ensure_network_policies_available()
         org = Organisation.objects.get(id=organisation_id)
 
         if not user_has_permission(user, "create", "NetworkAccessPolicies", org):
@@ -321,6 +322,7 @@ class UpdateNetworkAccessPolicyMutation(graphene.Mutation):
     @classmethod
     def mutate(cls, root, info, policy_inputs):
         user = info.context.user
+        _ensure_network_policies_available()
 
         ip_address, user_agent = get_resolver_request_meta(info.context)
 
@@ -683,6 +685,8 @@ class UpdateAccountNetworkAccessPolicies(graphene.Mutation):
 
     @classmethod
     def mutate(cls, root, info, account_inputs, organisation_id):
+        if any(account_input.policy_ids for account_input in account_inputs):
+            _ensure_network_policies_available()
 
         if not user_has_permission(
             info.context.user,

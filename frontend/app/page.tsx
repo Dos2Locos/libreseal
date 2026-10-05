@@ -12,19 +12,15 @@ import { FaArrowRight, FaEnvelope, FaLock, FaPlus, FaSignOutAlt, FaUsers } from 
 
 import { RoleLabel } from '@/components/users/RoleLabel'
 import OnboardingNavbar from '@/components/layout/OnboardingNavbar'
-import { GetLicenseData } from '@/graphql/queries/organisation/getLicense.gql'
 import { GetPendingInvitesForUser } from '@/graphql/queries/organisation/getPendingInvitesForUser.gql'
 import { useQuery } from '@apollo/client'
 import { Alert } from '@/components/common/Alert'
 import { Card } from '@/components/common/Card'
-import { PlanLabel } from '@/components/settings/organisation/PlanLabel'
 import { FaCubes } from 'react-icons/fa6'
 import { handleSignout } from '@/apollo/client'
 
 export default function Home() {
   const router = useRouter()
-
-  useQuery(GetLicenseData)
 
   const { organisations, setActiveOrganisation, loading } = useContext(organisationContext)
   const { user } = useUser()
@@ -106,7 +102,7 @@ export default function Home() {
           <div className="mx-auto my-auto w-full max-w-6xl px-4 pt-20 pb-8 space-y-6 sm:px-8 sm:py-12 sm:space-y-10">
             <div className="space-y-1 text-center">
               <h1 className="text-2xl font-bold text-black dark:text-white">
-                {hasOrgs ? 'Welcome back' : 'Welcome to Phase'}
+                {hasOrgs ? 'Welcome back' : 'Welcome to LibreSeal'}
               </h1>
               <p className="text-neutral-500">
                 {hasInvites && !hasOrgs
@@ -165,7 +161,6 @@ export default function Home() {
                             <RoleLabel role={org.role!} />
                           </div>
                         </div>
-                        <PlanLabel plan={org.plan} />
                       </div>
 
                       {/* One row on mobile (stats left, action right); display:contents at sm+

@@ -1,4 +1,4 @@
-import { ApiOrganisationPlanChoices, OrganisationMemberType, RoleType } from '@/apollo/graphql'
+import { OrganisationMemberType, RoleType } from '@/apollo/graphql'
 import GenericDialog from '@/components/common/GenericDialog'
 import { Alert } from '@/components/common/Alert'
 import { Fragment, useContext, useEffect, useRef, useState } from 'react'
@@ -28,8 +28,6 @@ import clsx from 'clsx'
 import { ToggleSwitch } from '@/components/common/ToggleSwitch'
 import { Button } from '@/components/common/Button'
 import { toast } from 'react-toastify'
-import { isCloudHosted } from '@/utils/appConfig'
-import { UpsellDialog } from '@/components/settings/organisation/UpsellDialog'
 
 const bip39 = require('bip39')
 
@@ -78,11 +76,6 @@ export const CreateServiceAccountDialog = ({
     setName('')
     setThirdParty(false)
   }
-
-  const upsell =
-    isCloudHosted() &&
-    organisation?.plan === ApiOrganisationPlanChoices.Fr &&
-    data?.organisationPlan.seatsUsed.total === data?.organisationPlan.maxUsers
 
   const roleOptions =
     roleData?.roles.filter(
@@ -224,17 +217,6 @@ export const CreateServiceAccountDialog = ({
   const dialogTitle = isTeamContext
     ? 'Create a Team Service Account'
     : 'Create a new Service Account'
-
-  if (upsell)
-    return (
-      <UpsellDialog
-        buttonLabel={
-          <>
-            <FaPlus /> {buttonLabel}
-          </>
-        }
-      />
-    )
 
   return (
     <GenericDialog

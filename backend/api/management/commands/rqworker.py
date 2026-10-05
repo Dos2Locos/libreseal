@@ -3,7 +3,6 @@ from django.core import management
 import logging
 import multiprocessing
 from multiprocessing.connection import wait
-import os
 import sys
 from django_rq.management.commands.rqworker import Command as OriginalRQWorkerCommand
 
@@ -55,65 +54,9 @@ class Command(BaseCommand):
         # to a full minute past its due time before being moved to the queue.
         management.call_command("rqscheduler", "scheduled-jobs", interval=2)
 
-    def run_log_streams_workers(self):
-        """Starts the worker pool for the log-streams queue.
-
-        Log shipping is network-I/O bound and per-stream serialized, so
-        useful concurrency ~= number of active streams. Sized via the
-        LOG_STREAM_WORKERS env var.
-
-        Parsed defensively: this runs in a supervised child, and a crash here
-        (e.g. a typo'd env value) would tear down the whole worker container
-        — syncs, emails and rotations included, not just log streams. A
-        zero/negative value would silently starve the queue while the
-        container looks healthy, so it is clamped to 1.
-        """
-        default_workers = 2
-        raw = os.getenv("LOG_STREAM_WORKERS", "")
-        try:
-            workers = int(raw) if raw.strip() else default_workers
-        except ValueError:
-            logger.warning(
-                "Invalid LOG_STREAM_WORKERS value %r — using the default (%s)",
-                raw,
-                default_workers,
-            )
-            workers = default_workers
-        if workers < 1:
-            logger.warning(
-                "LOG_STREAM_WORKERS=%s would start no delivery workers — clamping to 1",
-                workers,
-            )
-            workers = 1
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Starting log-streams RQ worker pool with {workers} workers..."
-            )
-        )
-
-        management.call_command("rqworker-pool", "log-streams", num_workers=workers)
-
-    def bootstrap_log_stream_schedule(self):
-        """(Re-)register the recurring log stream sweep at worker startup.
-
-        The schedule lives only in Redis. If it's lost — a Redis restart, or
-        rq-scheduler dropping an interval job whose hash expired while the
-        host was frozen — backend post_migrate wouldn't re-create it until
-        the next deploy. Worker startup is the natural recovery point; the
-        registration is idempotent (stable id, cancel-before-schedule).
-        """
-        try:
-            from ee.integrations.logs.streams.jobs import init_log_stream_sweeper
-
-            init_log_stream_sweeper()
-        except Exception:
-            logger.exception("Failed to register log stream sweeper at worker startup")
-
     def handle(self, *args, **options):
         queue = options["queue"]
         num_workers = options["num_workers"]
-
-        self.bootstrap_log_stream_schedule()
 
         processes = [
             multiprocessing.Process(
@@ -129,10 +72,6 @@ class Command(BaseCommand):
                 target=self.run_scheduled_jobs_worker,
             ),
             multiprocessing.Process(name="rqscheduler", target=self.run_scheduler),
-            multiprocessing.Process(
-                name="rqworker-pool-log-streams",
-                target=self.run_log_streams_workers,
-            ),
         ]
 
         for process in processes:

@@ -10,7 +10,7 @@ import {
   FaQuestionCircle,
   FaRegCircle,
   FaRegDotCircle,
-  FaSlack,
+  FaGithub,
 } from 'react-icons/fa'
 import { PiMonitorDuotone, PiMagicWandFill, PiTerminalWindow } from 'react-icons/pi'
 import { GetDashboard } from '@/graphql/queries/getDashboard.gql'
@@ -192,36 +192,36 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
 
   const resources = [
     {
-      href: 'https://docs.phase.dev/quickstart',
+      href: 'https://github.com/Dos2Locos/libreseal#readme',
       title: 'Quickstart',
-      description: 'A step-by-step guide on getting up and running with Phase in minutes',
+      description: 'A step-by-step guide on getting up and running with LibreSeal in minutes',
       logo: <PiMagicWandFill className="shrink-0" />,
     },
     {
-      href: 'https://docs.phase.dev/console',
+      href: 'https://github.com/Dos2Locos/libreseal#readme',
       title: 'Console Docs',
-      description: 'Complete documentation for the Phase Console',
+      description: 'Complete documentation for the LibreSeal',
       logo: <PiMonitorDuotone className="shrink-0" />,
     },
     {
-      href: 'https://docs.phase.dev/cli/commands',
+      href: 'https://github.com/Dos2Locos/libreseal#readme',
       title: 'CLI Docs',
-      description: 'Complete documentation for the Phase CLI',
+      description: 'Complete documentation for the LibreSeal CLI',
       logo: <PiTerminalWindow className="shrink-0" />,
     },
     {
-      href: 'https://docs.phase.dev/integrations',
+      href: 'https://github.com/Dos2Locos/libreseal#readme',
       title: 'Framework Integrations',
       description:
         'Learn how to inject secrets into frameworks such as Node.js, Django, Rails, and Laravel.',
       logo: <FaPlug className="shrink-0" />,
     },
     {
-      href: 'https://slack.phase.dev',
-      title: 'Join Slack',
-      description: 'Need help? Ping us on Slack',
-      logo: <FaSlack className="shrink-0" />,
-      linkText: 'Join',
+      href: 'https://github.com/Dos2Locos/libreseal/issues',
+      title: 'Issues & feedback',
+      description: 'Need help or found a bug? Open an issue on GitHub',
+      logo: <FaGithub className="shrink-0" />,
+      linkText: 'Open',
     },
   ]
 
@@ -247,7 +247,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
             <div>
               <h1 className="text-black dark:text-white font-semibold text-base">Getting started</h1>
               <p className="text-neutral-500 text-xs">
-                Start using Phase by creating an App and setting up your local dev environment. Add
+                Start using LibreSeal by creating an App and setting up your local dev environment. Add
                 your team members to start collaborating and set up syncing with third-party
                 services.
               </p>
@@ -287,7 +287,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                       <Link href={`/${organisation.name}/apps`}>
                         <Button variant="primary">Go to Apps</Button>
                       </Link>
-                      <Link href="https://docs.phase.dev/console/apps" target="_blank">
+                      <Link href="https://github.com/Dos2Locos/libreseal#readme" target="_blank">
                         <Button variant="secondary">View Docs</Button>
                       </Link>
                     </div>
@@ -302,7 +302,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
               >
                 <div className="space-y-4">
                   <div className="text-xs">
-                    The Phase CLI is how you can integrate Phase with your local development
+                    The LibreSeal CLI is how you can integrate LibreSeal with your local development
                     environment.
                   </div>
 
@@ -310,7 +310,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                   {!cliSetup && (
                     <>
                       <div>
-                        <div className="my-4 text-xs">1. Install the Phase CLI</div>
+                        <div className="my-4 text-xs">1. Install the LibreSeal CLI</div>
                         <CliInstallCommands />
                       </div>
                       <div className="space-y-3 text-xs">
@@ -330,7 +330,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                           className={clsx('flex items-center gap-2 text-xs', 'text-emerald-500')}
                         >
                           <FaCheckCircle />
-                          Install the Phase CLI
+                          Install the LibreSeal CLI
                         </div>
                       </div>
                       <div className="space-y-3">
@@ -359,13 +359,13 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                         <div>
                           <CliCommand
                             command="run <your_start_command>"
-                            comment="e.g., phase run yarn start"
+                            comment="e.g., libreseal run yarn start"
                           />
                         </div>
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <Link href="https://docs.phase.dev/cli/install" target="_blank">
+                      <Link href="https://github.com/Dos2Locos/libreseal#readme" target="_blank">
                         <Button variant="secondary">View Docs</Button>
                       </Link>
                     </div>
@@ -418,7 +418,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                         <Button variant="primary">Go to Members</Button>
                       </Link>
                       <Link
-                        href="https://docs.phase.dev/console/users#add-users-to-an-organisation"
+                        href="https://github.com/Dos2Locos/libreseal#readme"
                         target="_blank"
                       >
                         <Button variant="secondary">View Docs</Button>
@@ -477,7 +477,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
                       <Button variant="primary">Go to Integrations</Button>
                     </Link>
                     <Link
-                      href="https://docs.phase.dev/integrations/platforms/docker"
+                      href="https://github.com/Dos2Locos/libreseal#readme"
                       target="_blank"
                     >
                       <Button variant="secondary">View Docs</Button>
@@ -492,7 +492,7 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
           <div>
             <h1 className="text-black dark:text-white font-semibold text-base">Resources</h1>
             <p className="text-neutral-500 text-xs">
-              Here are some more resources to help you get started with Phase.
+              Here are some more resources to help you get started with LibreSeal.
             </p>
           </div>
 

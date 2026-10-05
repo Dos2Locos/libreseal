@@ -23,7 +23,8 @@ import {
   EMPTY_SECRET_FILTER,
   SecretFilter,
 } from '@/utils/secrets'
-import { ApiSecretTypeChoices, EnvironmentType, SecretType, DynamicSecretType } from '@/apollo/graphql'
+import { ApiSecretTypeChoices, EnvironmentType, SecretType } from '@/apollo/graphql'
+import type { DynamicSecretLike as DynamicSecretType } from '@/utils/secrets'
 import { AppSecret } from '@/app/[team]/apps/[app]/types'
 
 // Polyfill APIs missing in jsdom — save originals so we can restore after

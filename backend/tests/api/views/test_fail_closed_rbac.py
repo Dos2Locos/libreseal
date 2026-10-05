@@ -16,7 +16,6 @@ from api.auth import PhaseTokenAuthentication
 from api.utils.rest import get_request_principal
 
 _API = "api.views"
-_DYNAMIC = "ee.integrations.secrets.dynamic.rest.views"
 
 # (module, view class, url kwargs, HTTP methods)
 _VIEWS = [
@@ -68,8 +67,6 @@ _VIEWS = [
         ["delete"],
     ),
     (f"{_API}.teams", "PublicTeamAccessView", {"team_id": "t"}, ["put"]),
-    (f"{_DYNAMIC}", "DynamicSecretsView", {}, ["get"]),
-    (f"{_DYNAMIC}", "DynamicSecretLeaseView", {}, ["get", "put", "delete"]),
 ]
 
 _CASES = [

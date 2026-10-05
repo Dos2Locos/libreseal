@@ -103,7 +103,7 @@ export const ProgrammaticAccessMenu = () => {
                         appName={env?.app.name || ''}
                         env={env?.name}
                         path={pathString || ''}
-                        placeholder={`phase secrets list`}
+                        placeholder={`libreseal secrets list`}
                         size="sm"
                         label="CLI"
                         type="cli"

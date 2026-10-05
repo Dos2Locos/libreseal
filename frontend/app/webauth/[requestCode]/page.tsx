@@ -30,7 +30,7 @@ import { useSession } from '@/contexts/userContext'
 import { useRouter } from 'next/navigation'
 import { useContext, useEffect, useState, use } from 'react'
 import { FaChevronRight, FaExclamationTriangle, FaCheckCircle, FaShieldAlt } from 'react-icons/fa'
-import { SiGithub, SiGnometerminal, SiSlack } from 'react-icons/si'
+import { SiGithub, SiGnometerminal } from 'react-icons/si'
 import { toast } from 'react-toastify'
 
 interface WebAuthRequestParams {
@@ -310,7 +310,7 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
               CLI Authentication
             </h1>
             <p className="text-neutral-500 text-lg">
-              Choose an account below to authenticate with the Phase CLI
+              Choose an account below to authenticate with the LibreSeal CLI
             </p>
           </div>
           <div className="flex flex-col gap-4 w-ful max-w-2xl">
@@ -334,7 +334,7 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
             CLI Authentication complete
           </h1>
           <p className="text-neutral-500 text-lg">
-            You have logged into the Phase CLI as{' '}
+            You have logged into the LibreSeal CLI as{' '}
             <code className="text-emerald-500">{session?.user?.email}</code>. <br /> You can head
             back to your terminal and close this screen now
           </p>
@@ -383,9 +383,6 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
                 {isCloudHosted() ? (
                   <ul className="list-disc list-inside space-y-2">
                     <li>
-                      Choose your Phase instance type as: <b>☁️ Phase Cloud</b>
-                    </li>
-                    <li>
                       Enter your email address:{' '}
                       <code
                         className="text-emerald-500 cursor-pointer font-mono"
@@ -397,9 +394,6 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
                   </ul>
                 ) : (
                   <ul className="list-disc list-inside space-y-2">
-                    <li>
-                      Choose your Phase instance type: <b>🛠️ Self-hosted</b>
-                    </li>
                     <li>
                       Enter the host:{' '}
                       <code
@@ -440,23 +434,23 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
           <div className="space-y-4 pt-16">
             <div className="text-center">
               <a
-                href="https://docs.phase.dev/cli/commands#auth"
+                href="https://github.com/Dos2Locos/libreseal#readme"
                 target="_blank"
                 rel="noreferrer"
                 className="text-sm text-emerald-500 hover:text-emerald-400 transition ease"
               >
-                Phase CLI authentication documentation
+                LibreSeal CLI authentication documentation
               </a>
             </div>
             <div className="text-center">
               <div className="text-neutral-500 text-sm">Still having issues? Get in touch.</div>
               <div className="flex items-center gap-2 justify-center mt-2">
-                <a href="https://slack.phase.dev" target="_blank" rel="noreferrer">
+                <a href="https://github.com/Dos2Locos/libreseal/issues" target="_blank" rel="noreferrer">
                   <Button variant="secondary">
-                    <SiSlack /> Slack
+                    <SiGithub /> Issues
                   </Button>
                 </a>
-                <a href="https://github.com/phasehq" target="_blank" rel="noreferrer">
+                <a href="https://github.com/Dos2Locos/libreseal" target="_blank" rel="noreferrer">
                   <Button variant="secondary">
                     <SiGithub /> GitHub
                   </Button>
@@ -484,12 +478,12 @@ export default function WebAuth(props0: { params: Promise<{ requestCode: string 
           <div className="space-y-2 pt-20 text-center">
             <div className="text-neutral-500 text-sm">Still having issues? Get in touch.</div>
             <div className="flex items-center gap-2 justify-center">
-              <a href="https://slack.phase.dev" target="_blank" rel="noreferrer">
+              <a href="https://github.com/Dos2Locos/libreseal/issues" target="_blank" rel="noreferrer">
                 <Button variant="secondary">
-                  <SiSlack /> Slack
+                  <SiGithub /> Issues
                 </Button>
               </a>
-              <a href="https://github.com/phasehq" target="_blank" rel="noreferrer">
+              <a href="https://github.com/Dos2Locos/libreseal" target="_blank" rel="noreferrer">
                 <Button variant="secondary">
                   <SiGithub /> GitHub
                 </Button>

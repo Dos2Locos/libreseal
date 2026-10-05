@@ -9,8 +9,8 @@ export const generateRecoveryPdf = async (
   organisation: string,
   name?: string
 ) => {
-  const title = 'Phase Recovery Kit'
-  const subtitle = `This is a recovery kit for your Phase account. \nYou can use this to recover your account keys if you forget your sudo password.`
+  const title = 'LibreSeal Recovery Kit'
+  const subtitle = `This is a recovery kit for your LibreSeal account. \nYou can use this to recover your account keys if you forget your sudo password.`
   const hostname = `${window.location.protocol}//${window.location.host}`
 
   // Create a new jsPDF instance
@@ -87,7 +87,7 @@ export const generateRecoveryPdf = async (
   pdf.text(organisation, xPosition, yPosition)
   yPosition += paragraphSpace
 
-  //Phase instance host
+  //LibreSeal instance host
   pdf.setTextColor(115, 115, 115)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(11)
@@ -139,7 +139,7 @@ export const generateRecoveryPdf = async (
   pdf.text(`Generated on ${new Date().toDateString()}`, 10, 280)
 
   // Save the PDF
-  pdf.save(`phase-recovery-kit--${organisation}.pdf`)
+  pdf.save(`libreseal-recovery-kit--${organisation}.pdf`)
 }
 
 export const copyRecoveryKit = async (
@@ -151,7 +151,7 @@ export const copyRecoveryKit = async (
   const hostname = `${window.location.protocol}//${window.location.host}`
 
   const recoveryKit = `
-  Phase Recovery Kit\n\n
+  LibreSeal Recovery Kit\n\n
   ${name ? `Name: ${name}` : ''}\n
   Email: ${email}\n
   Organisation: ${organisation}\n

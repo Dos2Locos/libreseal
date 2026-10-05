@@ -7,7 +7,7 @@ import { TrustedDeviceManager } from '@/components/settings/account/TrustedDevic
 import { ViewRecoveryDialog } from '@/components/settings/account/ViewRecoveryDialog'
 import { RoleLabel } from '@/components/users/RoleLabel'
 import { organisationContext } from '@/contexts/organisationContext'
-import { PlanInfo } from '@/components/settings/organisation/PlanInfo'
+import { EditionInfo } from '@/components/settings/organisation/EditionInfo'
 import { TransferOwnershipSection } from '@/components/settings/organisation/TransferOwnershipSection'
 import { userHasPermission } from '@/utils/access/permissions'
 import { Tab } from '@headlessui/react'
@@ -106,7 +106,7 @@ export default function Settings() {
                       <h2 className="text-base sm:text-lg font-semibold">Organisation</h2>
                       <p className="text-neutral-500">Organisation info and settings</p>
                     </div>
-                    <PlanInfo />
+                    <EditionInfo />
                     <TransferOwnershipSection />
                   </div>
                 </Tab.Panel>
