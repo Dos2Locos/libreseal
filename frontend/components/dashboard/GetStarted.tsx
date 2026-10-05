@@ -10,7 +10,7 @@ import {
   FaQuestionCircle,
   FaRegCircle,
   FaRegDotCircle,
-  FaSlack,
+  FaGithub,
 } from 'react-icons/fa'
 import { PiMonitorDuotone, PiMagicWandFill, PiTerminalWindow } from 'react-icons/pi'
 import { GetDashboard } from '@/graphql/queries/getDashboard.gql'
@@ -218,10 +218,10 @@ export const GetStarted = (props: { organisation: OrganisationType }) => {
     },
     {
       href: 'https://github.com/Dos2Locos/libreseal/issues',
-      title: 'Join Slack',
-      description: 'Need help? Ping us on Slack',
-      logo: <FaSlack className="shrink-0" />,
-      linkText: 'Join',
+      title: 'Issues & feedback',
+      description: 'Need help or found a bug? Open an issue on GitHub',
+      logo: <FaGithub className="shrink-0" />,
+      linkText: 'Open',
     },
   ]
 
