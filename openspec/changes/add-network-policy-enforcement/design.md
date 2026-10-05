@@ -14,7 +14,8 @@ See `proposal.md`. Current state: `api/utils/access/network_policies.py` denies 
 - **Clean-room process**: the implementer works only from `api/models.py`, the UI form, public documentation of CIDR semantics and this spec. The PR description includes a statement that no `ee/` file was opened; reviewers check `git log -p` touches no `ee/` path.
 - **Evaluation** with Python's `ipaddress` (`ip_address(ip) in ip_network(entry, strict=False)`); entries trimmed; IPv4-mapped IPv6 normalised; invalid entries ignored for matching and rejected at write time (validation added to the create/update mutations).
 - **Trusted proxies**: new `TRUSTED_PROXY_CIDRS` setting (default: the Compose network and loopback). Forwarded headers are honoured only when `REMOTE_ADDR` is in that set.
-- **Middleware**: keep `network_access_denied(org, account)` as the single entry point; it now returns `not allowed(ip, policies)` when policies apply.
+- **Middleware**: keep `network_access_denied(org, account, ip)` as the single entry point; it returns `not allowed(ip, policies)` when policies apply.
+- **GraphQL coverage**: the inherited GraphQL middleware only checked resolvers with an `organisation_id` argument, so `secrets(envId)` and similar bypassed policies (found in review). It now reuses the SSO middleware's organisation auto-discovery (`<model>_id`, bare `id`/`ids`, input objects, `token_id`), checks every organisation referenced by bulk arguments, and caches decisions per request. A schema-wide test fails when a root field's organisation cannot be resolved and the field is not listed as account-scoped.
 
 ## Risks / Trade-offs
 

@@ -41,3 +41,21 @@ En vivo, con el host (`192.168.65.1`) haciendo de proxy exterior y una política
 | `NGINX_REAL_IP_FROM='10.0.0.0/8;evil'` | nginx no arranca: "invalid NGINX_REAL_IP_FROM entry" |
 
 Después se restauró la configuración por defecto (spoof → 403), se borró la política de prueba (→ 200).
+
+## Revisión: GraphQL sin `organisation_id` (tarea 1.4)
+
+Hallazgo de la revisión de código: el middleware GraphQL heredado solo aplicaba políticas cuando el resolver recibía `organisation_id`.
+
+Reproducción en vivo antes del arreglo (sesión de Owner con `django.test.Client` dentro del contenedor, `REMOTE_ADDR=192.0.2.10`, política global `10.0.0.0/8`):
+
+| Consulta | Antes | Después |
+|---|---|---|
+| `apps(organisationId)` | denegada | denegada |
+| `secrets(envId)` | **200 con 11 secretos (cifrados)** | denegada "Your IP address is not allowed to access homelab" |
+| `folders(envId)` | 200 | denegada |
+
+Control positivo con la política ampliada a `192.0.2.0/24`: las tres consultas responden (2 apps, 11 secretos). Política de prueba borrada al terminar.
+
+Automático: suite backend 2684 passed, 11 skipped (incluye el test de cobertura del esquema, 143 campos raíz, y tests de middleware para `envId`, `secretId`, `folderId`, `id`, `ids` mezclando organizaciones y listas de inputs). Comprobación negativa: quitando el alias `folder_id` el test de cobertura falla en `deleteSecretFolder`.
+
+Regresión de UI: CRUD de secretos por la UI (Playwright, a través de nginx) → crear/editar/borrar OK, sin texto en claro en peticiones.

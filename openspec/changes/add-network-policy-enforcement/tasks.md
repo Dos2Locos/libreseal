@@ -5,6 +5,7 @@
 - [x] 1.1 Implement IP/CIDR matching in `api/utils/access/network_policies.py` (clean-room, `ipaddress`) with unit tests for IPv4, IPv6, mapped addresses, invalid entries; verify with `pytest`
 - [x] 1.2 Add `TRUSTED_PROXY_CIDRS` and make `get_client_ip` honour forwarded headers only from trusted proxies; tests for spoofed headers; verify with `pytest`
 - [x] 1.3 Validate `allowed_ips` on create/update mutations; tests; verify with `pytest`
+- [x] 1.4 GraphQL enforcement on every organisation-scoped resolver (organisation resolved from any argument, all organisations checked in bulk operations, per-request decision cache) plus a schema-wide test that fails when a root field's organisation cannot be resolved; verify with `pytest` and live (`secrets(envId)` from a denied IP)
 
 ## 2. Enablement
 
