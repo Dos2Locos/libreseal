@@ -44,6 +44,7 @@ from djangorestframework_camel_case.render import (
     CamelCaseJSONRenderer,
 )
 from rest_framework.renderers import JSONRenderer
+from backend.edition import Feature, unavailable_message
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,38 @@ def _resolve_secret_tags(tag_names, org):
         )
         resolved.append(tag)
     return resolved, None
+
+
+
+def _option_enabled(params, name):
+    return name in params and str(params.get(name, "false")).lower() != "false"
+
+
+def dynamic_secrets_unavailable_response(params, env, path=None):
+    """Explicit error when a client asks for dynamic secrets that exist in
+    this environment (records migrated from Phase) but LibreSeal cannot
+    serve. Requests in environments without dynamic secrets are unaffected,
+    so clients that ask for them by default (the CLI does) keep working."""
+    if not (
+        _option_enabled(params, "dynamic") or _option_enabled(params, "include_dynamic")
+    ):
+        return None
+    from api.models import DynamicSecret
+
+    dynamic = DynamicSecret.objects.filter(environment=env, deleted_at=None)
+    if path:
+        dynamic = dynamic.filter(path=path)
+    if not dynamic.exists():
+        return None
+    return Response(
+        {
+            "error": unavailable_message(Feature.DYNAMIC_SECRETS)
+            + " This environment contains dynamic secrets migrated from Phase,"
+            " which cannot be returned. An administrator can remove them with"
+            " `python manage.py libreseal_remove_legacy_credentials`."
+        },
+        status=status.HTTP_501_NOT_IMPLEMENTED,
+    )
 
 
 class E2EESecretsView(APIView):
@@ -195,6 +228,12 @@ class E2EESecretsView(APIView):
         except:
             pass
 
+        unavailable = dynamic_secrets_unavailable_response(
+            request.headers, env, secrets_filter.get("path")
+        )
+        if unavailable is not None:
+            return unavailable
+
         secrets = list(
             Secret.objects.filter(**secrets_filter).prefetch_related('tags')
         )
@@ -214,8 +253,9 @@ class E2EESecretsView(APIView):
 
         # Dynamic secrets are not available in LibreSeal (upstream implements
         # them under the Phase Enterprise License). The `dynamic`/`lease`
-        # request options are accepted and ignored so existing clients keep
-        # receiving their static secrets unchanged.
+        # options are ignored when the environment has no dynamic secrets,
+        # so clients that request them by default keep working; see
+        # dynamic_secrets_unavailable_response for migrated records.
         response_data = serializer.data
 
         return Response(
@@ -590,6 +630,12 @@ class PublicSecretsView(APIView):
             # Filter secrets based on these tags
             secrets_filter["tags__in"] = tags
 
+        unavailable = dynamic_secrets_unavailable_response(
+            request.GET, env, secrets_filter.get("path")
+        )
+        if unavailable is not None:
+            return unavailable
+
         secrets = list(
             Secret.objects.filter(**secrets_filter).prefetch_related('tags')
         )
@@ -621,8 +667,9 @@ class PublicSecretsView(APIView):
 
         # Dynamic secrets are not available in LibreSeal (upstream implements
         # them under the Phase Enterprise License). The `dynamic`/`lease`
-        # request options are accepted and ignored so existing clients keep
-        # receiving their static secrets unchanged.
+        # options are ignored when the environment has no dynamic secrets,
+        # so clients that request them by default keep working; see
+        # dynamic_secrets_unavailable_response for migrated records.
         response_data = serializer.data
 
         return Response(

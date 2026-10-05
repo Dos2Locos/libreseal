@@ -3,7 +3,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.conf import settings
 from backend.api.notifier import notify_slack
-from api.models import RotatingSecret
+from api.models import DynamicSecret, DynamicSecretLease, RotatingSecret
 
 CLOUD_HOSTED = settings.APP_HOST == "cloud"
 
@@ -38,3 +38,13 @@ def _rotating_secret_pre_delete(sender, instance, **kwargs):
         from backend.edition import Feature, FeatureUnavailable
 
         raise FeatureUnavailable(Feature.SECRET_ROTATION)
+
+
+@receiver(pre_delete, sender=DynamicSecret)
+def _dynamic_secret_pre_delete(sender, instance, **kwargs):
+    # Same as above for dynamic secrets: cascade hard-deletes bypass the
+    # soft-delete DynamicSecret.delete(); active leases cannot be revoked.
+    if instance.leases.filter(status=DynamicSecretLease.ACTIVE).exists():
+        from backend.edition import Feature, FeatureUnavailable
+
+        raise FeatureUnavailable(Feature.DYNAMIC_SECRETS)

@@ -78,8 +78,9 @@ def revoke_lease_now(lease):
     raise GraphQLError(
         "This account has active dynamic secret leases from a migrated Phase "
         "instance. LibreSeal cannot revoke them at the provider. Revoke the "
-        "credentials at the provider and mark the leases as revoked before "
-        "deleting the account."
+        "credentials at the provider, then have a server administrator run "
+        "`python manage.py libreseal_remove_legacy_credentials --yes "
+        "--credentials-revoked` before deleting the account."
     )
 
 

@@ -1,3 +1,5 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
 import logging
 
 from api.auth import PhaseTokenAuthentication
@@ -419,13 +421,20 @@ class PublicAppDetailView(APIView):
         actor_type, actor_id, actor_meta = get_actor_info(request)
         ip_address, user_agent = get_resolver_request_meta(request)
 
-        audit_app_cascade_envs(
-            app, actor_type, actor_id, actor_meta, ip_address, user_agent
-        )
+        try:
+            with transaction.atomic():
+                audit_app_cascade_envs(
+                    app, actor_type, actor_id, actor_meta, ip_address, user_agent
+                )
 
-        app.wrapped_key_share = ""
-        app.save()
-        app.delete()
+                app.wrapped_key_share = ""
+                app.save()
+                app.delete()
+        except FeatureUnavailable:
+            return Response(
+                {"error": cascade_blocked_message("app")},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         log_audit_event(
             organisation=org,

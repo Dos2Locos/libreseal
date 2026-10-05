@@ -1,3 +1,6 @@
+from api.utils.legacy_credentials import cascade_blocked_message
+from backend.edition import FeatureUnavailable
+from django.db import transaction
 import re
 
 from api.auth import PhaseTokenAuthentication
@@ -321,7 +324,14 @@ class PublicEnvironmentDetailView(APIView):
             )
 
         env_name = env.name
-        env.delete()
+        try:
+            with transaction.atomic():
+                env.delete()
+        except FeatureUnavailable:
+            return Response(
+                {"error": cascade_blocked_message("environment")},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # Audit log
         actor_type, actor_id, actor_meta = get_actor_info(request)
