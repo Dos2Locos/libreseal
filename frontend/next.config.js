@@ -8,7 +8,7 @@ const ContentSecurityPolicy = `
   connect-src 'self' data: http://127.0.0.1:*;
   font-src 'self';
   frame-src 'self';
-  img-src 'self' https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://secure.gravatar.com https://gitlab.com;
+  img-src 'self' https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://gitlab.com;
   manifest-src 'self';
   media-src 'self';
   worker-src 'self' blob:;
