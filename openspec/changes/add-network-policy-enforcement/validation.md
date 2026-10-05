@@ -25,3 +25,19 @@ IP de cliente vista por el servidor desde el host: `192.168.65.1` (Docker Deskto
 | Política global | `10.0.0.0/8` global → cuenta de servicio 403 y Owner por GraphQL "Your IP address is not allowed to access homelab" |
 | Recuperación ante bloqueo | `libreseal_clear_network_policies` lista y `--yes` borra; acceso restaurado (200) |
 | Cabeceras no confiables directas al backend | Con `TRUSTED_PROXY_CIDRS=<IP de nginx>/32`, petición directa a `backend:8000` desde otro contenedor con `X-Real-IP: 10.1.2.3` y política `10.0.0.0/8` → 403; con la política ampliada a la red real del peer → 200 (se evalúa la IP de la conexión). `.env` restaurado después |
+
+## IP real detrás de otro proxy (tarea 2.3)
+
+Automático: `scripts/tests/test-nginx-real-ip.sh` (por defecto sin proxies de confianza, IPv4/CIDR/IPv6, cabecera de Cloudflare, entradas y cabeceras inválidas rechazadas sin tocar la config) → OK; `shellcheck` sobre el script y el test → sin avisos.
+
+En vivo, con el host (`192.168.65.1`) haciendo de proxy exterior y una política en `agent-demo` que solo permite `203.0.113.9`:
+
+| Escenario | Resultado |
+|---|---|
+| Sin `NGINX_REAL_IP_FROM`, cliente envía `X-Forwarded-For: 203.0.113.9` | 403 (se ignora; log de nginx `192.168.65.1`) |
+| `NGINX_REAL_IP_FROM=192.168.65.1`, `XFF: 203.0.113.9` | `nginx -t` OK; 200 (log `203.0.113.9`) |
+| Mismo proxy, `XFF: 198.51.100.1` | 403 |
+| Mismo proxy, cliente antepone `XFF: 203.0.113.9, 198.51.100.1` | 403 (recursivo: cuenta la entrada añadida por el proxy de confianza) |
+| `NGINX_REAL_IP_FROM='10.0.0.0/8;evil'` | nginx no arranca: "invalid NGINX_REAL_IP_FROM entry" |
+
+Después se restauró la configuración por defecto (spoof → 403), se borró la política de prueba (→ 200).

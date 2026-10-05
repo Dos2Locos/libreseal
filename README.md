@@ -47,7 +47,7 @@ Upgrade: `./scripts/libreseal-backup.sh && git pull && docker compose up -d --bu
 
 ### Configuration
 
-All settings live in `.env` (template: [`.env.example`](.env.example)). Key variables: `HOST`, `PUBLIC_URL`, `HTTP_PORT`, `HTTPS_PORT`, `ENABLE_PASSWORD_AUTH`, `SSO_PROVIDERS` (`google`, `github`, `gitlab`, `authentik`, `authelia`) and their credentials, optional `SMTP_*`. Never commit `.env`.
+All settings live in `.env` (template: [`.env.example`](.env.example)). Key variables: `HOST`, `PUBLIC_URL`, `HTTP_PORT`, `HTTPS_PORT`, `ENABLE_PASSWORD_AUTH`, `NGINX_REAL_IP_FROM` (see [Network access policies](#network-access-policies)), `SSO_PROVIDERS` (`google`, `github`, `gitlab`, `authentik`, `authelia`) and their credentials, optional `SMTP_*`. Never commit `.env`.
 
 ## CLI
 
@@ -97,7 +97,17 @@ Access Control → Network lets you define allow-lists of IP addresses and CIDR 
 
 LibreSeal's verifier is a clean-room implementation (`backend/api/utils/access/network_policies.py`), written without consulting upstream Enterprise-licensed code.
 
-**Client IP and proxies.** The client IP is taken from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy; otherwise the connection address is used, so clients cannot spoof their IP. By default loopback and private ranges are trusted (the bundled nginx runs on the private Docker network). The bundled nginx sets `X-Real-IP` to the address that connects to it, so if you put another reverse proxy in front (Traefik, Caddy, Cloudflare Tunnel…) policies would see that proxy's address: configure nginx's [`set_real_ip_from` / `real_ip_header`](https://nginx.org/en/docs/http/ngx_http_realip_module.html) for your proxy so it forwards the real client IP. Restrict `TRUSTED_PROXY_CIDRS` in `.env` if untrusted hosts on private networks can reach the backend, and never publish the backend port directly.
+**Client IP and proxies.** The backend takes the client IP from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy (`TRUSTED_PROXY_CIDRS`; default loopback and private ranges, where the bundled nginx runs); otherwise it uses the connection address. The bundled nginx overwrites both headers with the address it sees, so clients cannot spoof their IP.
+
+If another reverse proxy sits in front of nginx (Traefik, Caddy, Cloudflare Tunnel…), tell nginx to trust it, or every request will appear to come from that proxy:
+
+```sh
+# .env
+NGINX_REAL_IP_FROM=172.18.0.10            # IPs/CIDRs of your proxies, comma-separated
+NGINX_REAL_IP_HEADER=X-Forwarded-For      # Cloudflare: CF-Connecting-IP (and list Cloudflare's ranges)
+```
+
+nginx then uses its [realip module](https://nginx.org/en/docs/http/ngx_http_realip_module.html) (recursive, so a client-supplied leftmost `X-Forwarded-For` entry is ignored). Invalid values stop nginx from starting. Only list proxies you control, restrict `TRUSTED_PROXY_CIDRS` if untrusted hosts on private networks can reach the backend, and never publish the backend port directly.
 
 **Locked out?** List and delete policies from the host:
 

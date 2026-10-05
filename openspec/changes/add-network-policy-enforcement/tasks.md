@@ -10,6 +10,7 @@
 
 - [x] 2.1 Enable `Feature.NETWORK_POLICIES`, update edition/feature-gate tests and remove the "not available" badges in the UI; verify `pytest`, `tsc`, `yarn test`
 - [x] 2.2 Document policies, trusted proxies and lock-out recovery in README
+- [x] 2.3 Bundled nginx: configurable `NGINX_REAL_IP_FROM`/`NGINX_REAL_IP_HEADER` (realip module, recursive, validated at startup) and overwrite client-supplied forwarding headers; `scripts/tests/test-nginx-real-ip.sh` in CI; verify live behind a trusted outer proxy
 
 ## 3. Validation
 

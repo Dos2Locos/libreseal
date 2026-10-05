@@ -19,7 +19,7 @@ See `proposal.md`. Current state: `api/utils/access/network_policies.py` denies 
 ## Risks / Trade-offs
 
 - [Admins lock themselves out] → break-glass command stays; README documents it; UI warns when the admin's current IP is not covered (existing `isClientIpAllowed` helper).
-- [Wrong client IP behind other proxies] → `TRUSTED_PROXY_CIDRS` documented with examples (Traefik, Caddy, Cloudflare Tunnel).
+- [Wrong client IP behind other proxies] → the bundled nginx accepts `NGINX_REAL_IP_FROM` / `NGINX_REAL_IP_HEADER` (realip module, `real_ip_recursive on`, values validated by `nginx/real-ip.sh` so a bad value stops nginx instead of trusting everyone). nginx overwrites `X-Real-IP` and `X-Forwarded-For` with the resolved address, so the backend never sees client-supplied chains.
 
 ## Migration Plan
 
