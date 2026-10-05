@@ -107,14 +107,19 @@ NGINX_REAL_IP_FROM=172.18.0.10            # IPs/CIDRs of your proxies, comma-sep
 NGINX_REAL_IP_HEADER=X-Forwarded-For      # Cloudflare: CF-Connecting-IP (and list Cloudflare's ranges)
 ```
 
-nginx then uses its [realip module](https://nginx.org/en/docs/http/ngx_http_realip_module.html) (recursive, so a client-supplied leftmost `X-Forwarded-For` entry is ignored). Invalid values stop nginx from starting. Only list proxies you control, restrict `TRUSTED_PROXY_CIDRS` if untrusted hosts on private networks can reach the backend, and never publish the backend port directly.
+nginx then uses its [realip module](https://nginx.org/en/docs/http/ngx_http_realip_module.html) (recursive, so a client-supplied leftmost `X-Forwarded-For` entry is ignored). Invalid values, and ranges that would trust every client (`0.0.0.0/0`, `::/0`), stop nginx from starting. Only list proxies you control.
+
+**Outside the bundled Compose setup** (Kubernetes, a shared VPC, a backend port reachable from other hosts) the default `TRUSTED_PROXY_CIDRS` is too broad: any host on a private network that can reach the backend could claim another client's IP. Set it to the address(es) of the proxy in front of the backend, e.g. `TRUSTED_PROXY_CIDRS=10.42.0.15/32`. Entries that trust every address (`/0`) are ignored. Never publish the backend port directly.
 
 **Locked out?** List and delete policies from the host:
 
 ```sh
 docker compose exec backend python manage.py libreseal_clear_network_policies          # list
 docker compose exec backend python manage.py libreseal_clear_network_policies --yes    # delete all
+docker compose exec backend python manage.py libreseal_clear_network_policies --organisation <ID or name> --yes
 ```
+
+Deletions are recorded in each organisation's audit log as *Server administrator (manage.py …)*.
 
 ## Backup and restore
 

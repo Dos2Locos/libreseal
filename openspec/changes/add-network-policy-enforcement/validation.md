@@ -74,3 +74,11 @@ En vivo, peticiones directas a `backend:8000` desde un contenedor de la red de C
 | A través de nginx sin políticas | — | 200 |
 
 Políticas de prueba borradas al terminar. Automático: suite backend 2693 passed, 11 skipped (cadena XFF: entrada del cliente ignorada, saltos de confianza, todos de confianza, salto malformado, CIDRs propios; identidades: 403 sin contactar AWS STS ni validar el JWT de Azure).
+
+## Revisión: puntos bajos (tarea 1.7)
+
+- `NGINX_REAL_IP_FROM=0.0.0.0/0` → nginx no arranca: "would trust every client; list your proxies instead". `::/0` y listas que lo incluyen, rechazadas en `scripts/tests/test-nginx-real-ip.sh`; `shellcheck` sin avisos.
+- `TRUSTED_PROXY_CIDRS` con `0.0.0.0/0` o `::/0`: entradas ignoradas con aviso en log (tests en `test_ip.py`).
+- `libreseal_clear_network_policies` en vivo: `--organisation nope` → "No organisation with ID or name 'nope'"; por nombre lista la política (con ID de organización) y `--yes` la borra; por ID igual. Cada borrado crea un evento de auditoría (`D`, `policy`) con actor "Server administrator (manage.py libreseal_clear_network_policies)"; la consulta GraphQL `auditLogs` lo devuelve sin errores. Acceso restablecido (200).
+- El hallazgo de "dos organizaciones con el mismo nombre" no aplica: `Organisation.name` tiene restricción única en base de datos (comprobado: `IntegrityError` al intentar duplicarla).
+- Suite backend: 2702 passed, 11 skipped.
