@@ -1,6 +1,3 @@
-import { Button } from '@/components/common/Button'
-import { UnavailableBadge } from '@/components/common/UnavailableFeature'
-import { useFeature } from '@/hooks/useFeature'
 import GenericDialog from '@/components/common/GenericDialog'
 import { organisationContext } from '@/contexts/organisationContext'
 import { useContext, useRef } from 'react'
@@ -13,7 +10,6 @@ import { NetworkAccessPolicyForm } from '@/components/access/NetworkAccessPolicy
 
 export const CreateNetworkAccessPolicyDialog = ({ clientIp }: { clientIp: string }) => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
-  const networkPoliciesAvailable = useFeature('network_policies')
 
   const [createPolicy, { loading }] = useMutation(CreateAccessPolicy)
 
@@ -46,13 +42,6 @@ export const CreateNetworkAccessPolicyDialog = ({ clientIp }: { clientIp: string
   }
 
   if (!organisation) return <></>
-
-  if (!networkPoliciesAvailable)
-    return (
-      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
-        <FaPlus /> Create policy <UnavailableBadge />
-      </Button>
-    )
 
   return (
     <GenericDialog

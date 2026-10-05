@@ -17,7 +17,7 @@ Free, self-hosted secrets management for homelabs and small teams — web UI, RE
 | Third-party syncs (GitHub, GitLab, AWS, GCP, Azure, Vault, Cloudflare, …) | Inherited, not re-verified |
 | Sign-in: email/password, Google, GitHub, GitLab, Authentik, Authelia | ✅ password verified; OAuth/OIDC inherited |
 | Dynamic secrets, secret rotation, log streams, SCIM, org-level OIDC SSO (Entra ID, Okta, JumpCloud, Google OIDC, GitHub Enterprise) | ❌ Not available (see [Limitations](#compatibility-and-limitations)) |
-| Network access policies | ❌ Not enforceable yet — configuration disabled, legacy policies fail closed |
+| Network access policies (IP/CIDR allow-lists) | ✅ Clean-room implementation, enforced on UI, GraphQL and REST |
 | Kubernetes / Helm | ❌ Not adapted yet |
 
 ## Quick start (server)
@@ -91,6 +91,21 @@ The version-matched CLI guide is embedded in the CLI: a human runs `libreseal ai
 
 REST access to decrypted values (`GET /service/public/v1/secrets/?app_id=…&env=…` with `Authorization: Bearer ServiceAccount <token>`) requires enabling **server-side encryption (SSE)** for that app (App → Settings). SSE lets the server read the app's secrets; the CLI and UI work without it (end-to-end encrypted). Out-of-scope requests are denied (401/403).
 
+## Network access policies
+
+Access Control → Network lets you define allow-lists of IP addresses and CIDR ranges (IPv4 and IPv6) and assign them to members or service accounts, or make them global for the organisation. When any policy applies to an account, requests from that account are accepted only from a client IP covered by at least one applicable policy; accounts without policies are governed by RBAC alone. Invalid entries are rejected when saving and never grant access.
+
+LibreSeal's verifier is a clean-room implementation (`backend/api/utils/access/network_policies.py`), written without consulting upstream Enterprise-licensed code.
+
+**Client IP and proxies.** The client IP is taken from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy; otherwise the connection address is used, so clients cannot spoof their IP. By default loopback and private ranges are trusted (the bundled nginx runs on the private Docker network). The bundled nginx sets `X-Real-IP` to the address that connects to it, so if you put another reverse proxy in front (Traefik, Caddy, Cloudflare Tunnel…) policies would see that proxy's address: configure nginx's [`set_real_ip_from` / `real_ip_header`](https://nginx.org/en/docs/http/ngx_http_realip_module.html) for your proxy so it forwards the real client IP. Restrict `TRUSTED_PROXY_CIDRS` in `.env` if untrusted hosts on private networks can reach the backend, and never publish the backend port directly.
+
+**Locked out?** List and delete policies from the host:
+
+```sh
+docker compose exec backend python manage.py libreseal_clear_network_policies          # list
+docker compose exec backend python manage.py libreseal_clear_network_policies --yes    # delete all
+```
+
 ## Backup and restore
 
 ```sh
@@ -104,7 +119,6 @@ A restore needs the dump **and the same `.env`** (`SERVER_SECRET`, `SECRET_KEY`,
 
 - **API, token formats and cryptography are unchanged** from Phase Console v2.77.2; existing Phase SDKs and the Phase CLI should keep working (only the `libreseal` CLI is verified).
 - **Removed proprietary code.** Upstream ships some features only under the *Phase Console Enterprise License* (`ee/` directories): dynamic secrets, secret rotation, log streams, SCIM, organisation-level OIDC SSO, license activation and billing. LibreSeal does not contain that code; the UI shows these features as *not available* and their APIs return 404 or an explicit error. Re-implementations will only be accepted as clean-room work (written without consulting `ee/` sources), each in its own OpenSpec change.
-- **Network access policies** cannot be enforced (the upstream verifier is in `ee/`). Creating/assigning policies is refused; accounts that already have policies (migrated data) are **denied** until an admin removes them with `docker compose exec backend python manage.py libreseal_clear_network_policies --yes`.
 - **Migrating from Phase**: restore a Phase `pg_dump` with `libreseal-restore.sh` using the original `SECRET_KEY`/`SERVER_SECRET`. Revoke dynamic secret leases and rotating credentials in Phase first: LibreSeal cannot revoke them and refuses to delete records of live provider credentials.
 - **No plans or quotas.** The `plan` fields remain in the database/GraphQL schema for compatibility only.
 - **No telemetry.** The UI only talks to your server (verified by capturing browser and container traffic); Next.js telemetry is disabled.

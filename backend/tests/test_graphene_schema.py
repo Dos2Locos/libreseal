@@ -37,6 +37,7 @@ def test_libreseal_features_query_lists_enabled_features():
     assert result.data["libresealFeatures"] == [
         "custom_environments",
         "custom_roles",
+        "network_policies",
         "service_accounts",
         "teams",
     ]

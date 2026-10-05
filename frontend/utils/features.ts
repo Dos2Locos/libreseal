@@ -21,6 +21,7 @@ export type LibresealFeature =
 export const DEFAULT_ENABLED_FEATURES: readonly LibresealFeature[] = [
   'custom_environments',
   'custom_roles',
+  'network_policies',
   'service_accounts',
   'teams',
 ]
