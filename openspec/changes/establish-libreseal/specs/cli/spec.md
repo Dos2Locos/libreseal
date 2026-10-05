@@ -10,7 +10,7 @@ Define el CLI `libreseal` (repositorio `libreseal-cli`) para autenticarse contra
 El CLI SHALL instalarse como el ejecutable `libreseal`, mostrar la marca LibreSeal en `--help` y `--version`, y documentar su instalación compilando desde el código fuente sin depender de publicaciones controladas por Phase.
 
 #### Scenario: Instalación desde fuente
-- **WHEN** se ejecuta `go install ./src/...` o `make install` en `libreseal-cli` según el README
+- **WHEN** se ejecuta `./scripts/install-from-source.sh` en `libreseal-cli` según el README
 - **THEN** queda disponible `libreseal --version` y `libreseal --help` muestra "LibreSeal"
 
 ### Requirement: Sin host por defecto de Phase Cloud

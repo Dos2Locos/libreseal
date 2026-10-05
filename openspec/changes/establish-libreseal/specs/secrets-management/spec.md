@@ -21,7 +21,7 @@ LibreSeal SHALL conservar apps con entornos por defecto (Development, Staging, P
 - **THEN** la app tiene los entornos Development, Staging y Production
 
 ### Requirement: API para aplicaciones con cuentas de servicio
-LibreSeal SHALL conservar la API pública `/service/public/v1/` y la autenticación `Authorization: Bearer ServiceAccount <token>` sin cambios de formato.
+LibreSeal SHALL conservar la API pública `/service/public/v1/` y la autenticación `Authorization: Bearer ServiceAccount <token>` sin cambios de formato. El acceso a valores por la API REST requiere que la app tenga activado el cifrado del lado del servidor (SSE), como en upstream.
 
 #### Scenario: Lectura con cuenta de servicio
 - **WHEN** una cuenta de servicio con acceso de lectura a `demo/Development` llama a `GET /service/public/v1/secrets/?app_id=<id>&env=development` con su token
@@ -36,7 +36,7 @@ LibreSeal SHALL denegar cualquier acceso de una identidad a apps, entornos u ope
 
 #### Scenario: Entorno no asignado
 - **WHEN** una cuenta de servicio con acceso solo a `Development` solicita secretos de `Production`
-- **THEN** la respuesta es 403 y no se devuelven secretos
+- **THEN** la respuesta es 401 o 403 (contrato heredado: 401 "Service account cannot access this environment") y no se devuelven secretos
 
 #### Scenario: Token revocado
 - **WHEN** se usa un token de cuenta de servicio después de eliminarlo

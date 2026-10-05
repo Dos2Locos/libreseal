@@ -25,7 +25,7 @@ LibreSeal SHALL proporcionar un skill de uso, distribuido con el CLI (`libreseal
 - **THEN** todos los comandos y flags existen en el CLI
 
 ### Requirement: Secretos fuera de prompts, logs y ficheros versionados
-Los skills SHALL indicar a los agentes que usen `libreseal run` para inyectar secretos, SHALL prohibir imprimir valores, redirigir exportaciones a ficheros o escribir secretos en ficheros versionados, y el CLI SHALL bloquear `printenv`/`env`/`export`/`set` dentro de `libreseal run` y `libreseal shell` en modo agente.
+Los skills SHALL indicar a los agentes que usen `libreseal run` para inyectar secretos, SHALL prohibir imprimir valores, redirigir exportaciones a ficheros o escribir secretos en ficheros versionados, y el CLI SHALL bloquear `printenv`/`env`/`export`/`set` dentro de `libreseal run` y `libreseal shell` en modo agente, y SHALL redactar los valores `sealed` para agentes cuando el usuario haya activado `libreseal ai enable`.
 
 #### Scenario: Bloqueo en modo agente
 - **WHEN** con `CLAUDECODE=1` en el entorno se ejecuta `libreseal run 'printenv'`

@@ -42,8 +42,8 @@
 
 ## 6. [skills] libreseal-skills
 
-- [ ] 6.1 [skills] Adaptar `docker-compose/` a LibreSeal (repo, scripts, verificación); verificar con `grep` de referencias a Phase Cloud vacío y recorrido real en la validación 7.9
-- [ ] 6.2 [skills] Crear `libreseal-usage/` (SKILL.md + `examples/agent-demo.sh`) siguiendo el spec `agent-skills`; verificar con `shellcheck` si está disponible y ejecución en 7.9
+- [x] 6.1 [skills] Adaptar `docker-compose/` a LibreSeal (repo, scripts, verificación); verificar con `grep` de referencias a Phase Cloud vacío y recorrido real en la validación 7.9
+- [x] 6.2 [skills] Crear `libreseal-usage/` (SKILL.md + `examples/agent-demo.sh`) siguiendo el spec `agent-skills`; verificar con `shellcheck` si está disponible y ejecución en 7.9
 - [x] 6.3 [skills] README con instalación (`npx skills add Dos2Locos/libreseal-skills` y copia manual), estado de k8s/eks/aks, licencia MIT y atribución
 
 ## 7. Validación integrada (instancia local)
@@ -52,15 +52,15 @@
 - [x] 7.2 Registro de usuario con contraseña y creación de organización; CRUD de un secreto sintético en la UI con navegador automatizado; registrar capturas/resultados
 - [x] 7.3 Crear cuenta de servicio limitada a `demo/Development` (lectura y escritura) y otra de solo lectura; probar API: lectura 200, escritura 200/201, `Production` 403, escritura con solo lectura 403, token eliminado 401/403
 - [x] 7.4 Verificar sin cuotas: cuarto entorno personalizado, rol personalizado, equipo, 6 cuentas de servicio; y funciones no disponibles (UI y `GET /service/public/v1/secrets/dynamic/` → 404)
-- [ ] 7.5 Persistencia: `docker compose down && docker compose up -d` y relectura del secreto por API y CLI
-- [ ] 7.6 Copia y restauración: backup → `docker compose down -v` → up → restore → relectura por CLI
-- [ ] 7.7 CLI contra la instancia: `auth --mode token`, `apps list`, `init`, `secrets create/list/get/update/delete`, `import/export`, `run` comprobando el valor sin imprimirlo; capturar la salida y verificar que el valor sintético no aparece (`grep -c`)
-- [ ] 7.8 Sin servicios de Phase: capturar peticiones del navegador durante 7.2 y conexiones del backend (logs/`tcpdump` o proxy) y comprobar ausencia de dominios de Phase, PostHog, Stripe, statuspage y GitHub API
-- [ ] 7.9 Skills: recorrido real del skill `docker-compose` (o de sus comandos) y ejecución de `agent-demo.sh` con `CLAUDECODE=1`, incluyendo el bloqueo de `printenv`
-- [ ] 7.10 Ejecutar `openspec validate establish-libreseal --strict` y registrar la matriz verificada Console/CLI/skills en los README
+- [x] 7.5 Persistencia: `docker compose down && docker compose up -d` y relectura del secreto por API y CLI
+- [x] 7.6 Copia y restauración: backup → `docker compose down -v` → up → restore → relectura por CLI
+- [x] 7.7 CLI contra la instancia: `auth --mode token`, `apps list`, `init`, `secrets create/list/get/update/delete`, `import/export`, `run` comprobando el valor sin imprimirlo; capturar la salida y verificar que el valor sintético no aparece (`grep -c`)
+- [x] 7.8 Sin servicios de Phase: capturar peticiones del navegador durante 7.2 y conexiones del backend (logs/`tcpdump` o proxy) y comprobar ausencia de dominios de Phase, PostHog, Stripe, statuspage y GitHub API
+- [x] 7.9 Skills: recorrido real del skill `docker-compose` (o de sus comandos) y ejecución de `agent-demo.sh` con `CLAUDECODE=1`, incluyendo el bloqueo de `printenv`
+- [x] 7.10 Ejecutar `openspec validate establish-libreseal --strict` y registrar la matriz verificada Console/CLI/skills en los README
 
 ## 8. Documentación y entrega
 
-- [ ] 8.1 README de `libreseal`: propósito y estado real, relación con Phase y atribuciones, instalación de servidor y CLI, skills, permisos para apps y agentes, copia/restauración, compatibilidad y limitaciones (funciones no disponibles, historial con `ee/`), contribución vía OpenSpec; verificar que cada comando documentado se ejecutó en la sección 7
+- [x] 8.1 README de `libreseal`: propósito y estado real, relación con Phase y atribuciones, instalación de servidor y CLI, skills, permisos para apps y agentes, copia/restauración, compatibilidad y limitaciones (funciones no disponibles, historial con `ee/`), contribución vía OpenSpec; verificar que cada comando documentado se ejecutó en la sección 7
 - [ ] 8.2 Commits pequeños por grupo, push de `feat/establish-libreseal` en los tres repos y PRs contra `main` de cada fork sin fusionar; enlazar los PRs entre sí
 - [ ] 8.3 Proponer el siguiente cambio (`add-network-policy-enforcement`, sala limpia) como cambio OpenSpec separado en estado propuesto
