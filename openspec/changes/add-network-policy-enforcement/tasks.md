@@ -6,6 +6,8 @@
 - [x] 1.2 Add `TRUSTED_PROXY_CIDRS` and make `get_client_ip` honour forwarded headers only from trusted proxies; tests for spoofed headers; verify with `pytest`
 - [x] 1.3 Validate `allowed_ips` on create/update mutations; tests; verify with `pytest`
 - [x] 1.4 GraphQL enforcement on every organisation-scoped resolver (organisation resolved from any argument, all organisations checked in bulk operations, per-request decision cache) plus a schema-wide test that fails when a root field's organisation cannot be resolved; verify with `pytest` and live (`secrets(envId)` from a denied IP)
+- [x] 1.5 Resolve `X-Forwarded-For` right to left skipping trusted proxies (never the client-supplied left-most entry); tests; verify live directly against the backend
+- [x] 1.6 Apply network policies in the token-minting identity endpoints (AWS IAM, Azure Entra) before contacting the provider; tests; verify live
 
 ## 2. Enablement
 

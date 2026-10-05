@@ -59,3 +59,18 @@ Control positivo con la política ampliada a `192.0.2.0/24`: las tres consultas 
 Automático: suite backend 2684 passed, 11 skipped (incluye el test de cobertura del esquema, 143 campos raíz, y tests de middleware para `envId`, `secretId`, `folderId`, `id`, `ids` mezclando organizaciones y listas de inputs). Comprobación negativa: quitando el alias `folder_id` el test de cobertura falla en `deleteSecretFolder`.
 
 Regresión de UI: CRUD de secretos por la UI (Playwright, a través de nginx) → crear/editar/borrar OK, sin texto en claro en peticiones.
+
+## Revisión: `X-Forwarded-For` y endpoints de identidad (tareas 1.5 y 1.6)
+
+En vivo, peticiones directas a `backend:8000` desde un contenedor de la red de Compose (peer de confianza por defecto), cuenta de servicio `agent-demo`:
+
+| Prueba | Antes | Después |
+|---|---|---|
+| Política `10.0.0.0/8`, `X-Forwarded-For: 10.1.2.3, 198.51.100.7` sin `X-Real-IP` | **200** (se usaba la entrada del cliente) | 403 |
+| Política `198.51.100.0/24`, misma cabecera (control) | — | 200 |
+| AWS IAM auth con política que excluye la IP | 403 "Server-side key management must be enabled" (la política no se miraba) | 403 "Access denied: a network access policy…" |
+| Azure Entra auth con política que excluye la IP | ídem | ídem |
+| Identidades con política `172.16.0.0/12` (control) | — | siguen al control siguiente ("Server-side key management…") |
+| A través de nginx sin políticas | — | 200 |
+
+Políticas de prueba borradas al terminar. Automático: suite backend 2693 passed, 11 skipped (cadena XFF: entrada del cliente ignorada, saltos de confianza, todos de confianza, salto malformado, CIDRs propios; identidades: 403 sin contactar AWS STS ni validar el JWT de Azure).

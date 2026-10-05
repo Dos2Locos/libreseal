@@ -93,11 +93,11 @@ REST access to decrypted values (`GET /service/public/v1/secrets/?app_id=…&env
 
 ## Network access policies
 
-Access Control → Network lets you define allow-lists of IP addresses and CIDR ranges (IPv4 and IPv6) and assign them to members or service accounts, or make them global for the organisation. When any policy applies to an account, requests from that account are accepted only from a client IP covered by at least one applicable policy; accounts without policies are governed by RBAC alone. Invalid entries are rejected when saving and never grant access.
+Access Control → Network lets you define allow-lists of IP addresses and CIDR ranges (IPv4 and IPv6) and assign them to members or service accounts, or make them global for the organisation. When any policy applies to an account, requests from that account are accepted only from a client IP covered by at least one applicable policy; accounts without policies are governed by RBAC alone. Invalid entries are rejected when saving and never grant access. Policies apply to the web UI, GraphQL, the REST API and service-account token issuance through AWS IAM / Azure Entra identities.
 
 LibreSeal's verifier is a clean-room implementation (`backend/api/utils/access/network_policies.py`), written without consulting upstream Enterprise-licensed code.
 
-**Client IP and proxies.** The backend takes the client IP from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy (`TRUSTED_PROXY_CIDRS`; default loopback and private ranges, where the bundled nginx runs); otherwise it uses the connection address. The bundled nginx overwrites both headers with the address it sees, so clients cannot spoof their IP.
+**Client IP and proxies.** The backend takes the client IP from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy (`TRUSTED_PROXY_CIDRS`; default loopback and private ranges, where the bundled nginx runs); otherwise it uses the connection address. `X-Forwarded-For` is read right to left, skipping trusted proxies, so entries supplied by the client are ignored. The bundled nginx overwrites both headers with the address it sees, so clients cannot spoof their IP.
 
 If another reverse proxy sits in front of nginx (Traefik, Caddy, Cloudflare Tunnel…), tell nginx to trust it, or every request will appear to come from that proxy:
 
