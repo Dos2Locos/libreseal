@@ -13,5 +13,5 @@
 
 ## 3. Validation
 
-- [ ] 3.1 Local instance: policy allowing the test client → 200; policy excluding it → 403; global policy; spoofed `X-Forwarded-For` ignored; record in `validation.md`
-- [ ] 3.2 PR statement that no `ee/` source was consulted; `scripts/check-libreseal-guard.sh` passes
+- [x] 3.1 Local instance: policy allowing the test client → 200; policy excluding it → 403; global policy; spoofed `X-Forwarded-For` ignored; record in `validation.md`
+- [x] 3.2 PR statement that no `ee/` source was consulted; `scripts/check-libreseal-guard.sh` passes
