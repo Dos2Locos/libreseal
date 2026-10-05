@@ -15,6 +15,7 @@ from backend.edition import (
         Feature.TEAMS,
         Feature.CUSTOM_ENVIRONMENTS,
         Feature.SERVICE_ACCOUNTS,
+        Feature.NETWORK_POLICIES,
     ],
 )
 def test_core_features_enabled(feature):
@@ -30,7 +31,6 @@ def test_core_features_enabled(feature):
         Feature.LOG_STREAMS,
         Feature.SCIM,
         Feature.ENTERPRISE_SSO,
-        Feature.NETWORK_POLICIES,
         Feature.BILLING,
         Feature.LICENSING,
     ],
@@ -48,6 +48,7 @@ def test_enabled_features_lists_core_only():
     assert enabled_features() == [
         "custom_environments",
         "custom_roles",
+        "network_policies",
         "service_accounts",
         "teams",
     ]

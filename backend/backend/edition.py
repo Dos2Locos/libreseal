@@ -21,6 +21,8 @@ class Feature(str, Enum):
     TEAMS = "teams"
     CUSTOM_ENVIRONMENTS = "custom_environments"
     SERVICE_ACCOUNTS = "service_accounts"
+    # Clean-room implementation (api.utils.access.network_policies)
+    NETWORK_POLICIES = "network_policies"
 
     # Upstream Enterprise-only features, not available in LibreSeal
     DYNAMIC_SECRETS = "dynamic_secrets"
@@ -28,7 +30,6 @@ class Feature(str, Enum):
     LOG_STREAMS = "log_streams"
     SCIM = "scim"
     ENTERPRISE_SSO = "enterprise_sso"
-    NETWORK_POLICIES = "network_policies"
     BILLING = "billing"
     LICENSING = "licensing"
 
@@ -39,6 +40,7 @@ ENABLED_FEATURES = frozenset(
         Feature.TEAMS,
         Feature.CUSTOM_ENVIRONMENTS,
         Feature.SERVICE_ACCOUNTS,
+        Feature.NETWORK_POLICIES,
     }
 )
 

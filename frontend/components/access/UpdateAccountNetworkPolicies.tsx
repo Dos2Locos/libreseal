@@ -1,5 +1,3 @@
-import { UnavailableBadge } from '@/components/common/UnavailableFeature'
-import { useFeature } from '@/hooks/useFeature'
 import {
   ServiceAccountType,
   OrganisationMemberType,
@@ -30,7 +28,6 @@ export const UpdateAccountNetworkPolicies = ({
   account: ServiceAccountType | OrganisationMemberType
 }) => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
-  const networkPoliciesAvailable = useFeature('network_policies')
 
   const dialogRef = useRef<{ closeModal: () => void }>(null)
 
@@ -117,13 +114,6 @@ export const UpdateAccountNetworkPolicies = ({
   const noPolicies = availablePolicies.length === 0 && globalPolicies.length === 0
 
   if (!organisation) return <></>
-
-  if (!networkPoliciesAvailable)
-    return (
-      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
-        <FaNetworkWired /> Manage policy <UnavailableBadge />
-      </Button>
-    )
 
   return (
     <GenericDialog

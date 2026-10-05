@@ -469,3 +469,10 @@ SLACK_WEBHOOK_URI = f"https://hooks.slack.com/services/{os.getenv('SLACK_NOTIFIE
 # Value should be either 'self' or 'cloud'
 APP_HOST = os.getenv("APP_HOST", "self")
 
+
+# Networks allowed to set X-Real-IP / X-Forwarded-For (comma-separated CIDRs).
+# Empty -> loopback and private ranges (see api.utils.access.ip).
+TRUSTED_PROXY_CIDRS = [
+    c.strip() for c in os.getenv("TRUSTED_PROXY_CIDRS", "").split(",") if c.strip()
+]
+

@@ -36,3 +36,15 @@ LibreSeal SHALL permitir crear, editar y asignar políticas de red y SHALL aplic
 #### Scenario: Cabeceras de proxy no confiables
 - **WHEN** una petición llega directamente al backend con `X-Forwarded-For: 10.1.2.3` desde una IP no configurada como proxy de confianza
 - **THEN** la IP evaluada es la de la conexión, no la de la cabecera
+
+#### Scenario: Operaciones GraphQL sin organisation_id
+- **WHEN** un miembro al que una política excluye su IP consulta o modifica recursos de la organización por GraphQL con argumentos que no son `organisationId` (p. ej. `secrets(envId)`, `folders(envId)`, mutaciones por `id`/`ids` o listas de inputs)
+- **THEN** la petición se deniega igual que con `organisationId`, y en operaciones masivas se comprueban todas las organizaciones referenciadas
+
+#### Scenario: Entrada de X-Forwarded-For aportada por el cliente
+- **WHEN** un proxy de confianza reenvía `X-Forwarded-For: 10.1.2.3, 198.51.100.7` sin `X-Real-IP`, donde `10.1.2.3` lo envió el cliente
+- **THEN** la IP evaluada es `198.51.100.7` (la cadena se recorre de derecha a izquierda saltando proxies de confianza)
+
+#### Scenario: Emisión de tokens con identidad externa
+- **WHEN** una cuenta de servicio cuyas políticas excluyen la IP del cliente pide un token mediante una identidad externa (AWS IAM, Azure Entra)
+- **THEN** la respuesta es 403 por política de red y no se contacta con el proveedor de identidad

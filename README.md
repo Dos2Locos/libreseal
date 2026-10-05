@@ -17,7 +17,7 @@ Free, self-hosted secrets management for homelabs and small teams — web UI, RE
 | Third-party syncs (GitHub, GitLab, AWS, GCP, Azure, Vault, Cloudflare, …) | Inherited, not re-verified |
 | Sign-in: email/password, Google, GitHub, GitLab, Authentik, Authelia | ✅ password verified; OAuth/OIDC inherited |
 | Dynamic secrets, secret rotation, log streams, SCIM, org-level OIDC SSO (Entra ID, Okta, JumpCloud, Google OIDC, GitHub Enterprise) | ❌ Not available (see [Limitations](#compatibility-and-limitations)) |
-| Network access policies | ❌ Not enforceable yet — configuration disabled, legacy policies fail closed |
+| Network access policies (IP/CIDR allow-lists) | ✅ Clean-room implementation, enforced on UI, GraphQL and REST |
 | Kubernetes / Helm | ❌ Not adapted yet |
 
 ## Quick start (server)
@@ -47,7 +47,7 @@ Upgrade: `./scripts/libreseal-backup.sh && git pull && docker compose up -d --bu
 
 ### Configuration
 
-All settings live in `.env` (template: [`.env.example`](.env.example)). Key variables: `HOST`, `PUBLIC_URL`, `HTTP_PORT`, `HTTPS_PORT`, `ENABLE_PASSWORD_AUTH`, `SSO_PROVIDERS` (`google`, `github`, `gitlab`, `authentik`, `authelia`) and their credentials, optional `SMTP_*`. Never commit `.env`.
+All settings live in `.env` (template: [`.env.example`](.env.example)). Key variables: `HOST`, `PUBLIC_URL`, `HTTP_PORT`, `HTTPS_PORT`, `ENABLE_PASSWORD_AUTH`, `NGINX_REAL_IP_FROM` (see [Network access policies](#network-access-policies)), `SSO_PROVIDERS` (`google`, `github`, `gitlab`, `authentik`, `authelia`) and their credentials, optional `SMTP_*`. Never commit `.env`.
 
 ## CLI
 
@@ -91,6 +91,36 @@ The version-matched CLI guide is embedded in the CLI: a human runs `libreseal ai
 
 REST access to decrypted values (`GET /service/public/v1/secrets/?app_id=…&env=…` with `Authorization: Bearer ServiceAccount <token>`) requires enabling **server-side encryption (SSE)** for that app (App → Settings). SSE lets the server read the app's secrets; the CLI and UI work without it (end-to-end encrypted). Out-of-scope requests are denied (401/403).
 
+## Network access policies
+
+Access Control → Network lets you define allow-lists of IP addresses and CIDR ranges (IPv4 and IPv6) and assign them to members or service accounts, or make them global for the organisation. When any policy applies to an account, requests from that account are accepted only from a client IP covered by at least one applicable policy; accounts without policies are governed by RBAC alone. Invalid entries are rejected when saving and never grant access. Policies apply to the web UI, GraphQL, the REST API and service-account token issuance through AWS IAM / Azure Entra identities.
+
+LibreSeal's verifier is a clean-room implementation (`backend/api/utils/access/network_policies.py`), written without consulting upstream Enterprise-licensed code.
+
+**Client IP and proxies.** The backend takes the client IP from `X-Real-IP` / `X-Forwarded-For` only when the request comes from a trusted proxy (`TRUSTED_PROXY_CIDRS`; default loopback and private ranges, where the bundled nginx runs); otherwise it uses the connection address. `X-Forwarded-For` is read right to left, skipping trusted proxies, so entries supplied by the client are ignored. The bundled nginx overwrites both headers with the address it sees, so clients cannot spoof their IP.
+
+If another reverse proxy sits in front of nginx (Traefik, Caddy, Cloudflare Tunnel…), tell nginx to trust it, or every request will appear to come from that proxy:
+
+```sh
+# .env
+NGINX_REAL_IP_FROM=172.18.0.10            # IPs/CIDRs of your proxies, comma-separated
+NGINX_REAL_IP_HEADER=X-Forwarded-For      # Cloudflare: CF-Connecting-IP (and list Cloudflare's ranges)
+```
+
+nginx then uses its [realip module](https://nginx.org/en/docs/http/ngx_http_realip_module.html) (recursive, so a client-supplied leftmost `X-Forwarded-For` entry is ignored). Invalid values, and ranges that would trust every client (`0.0.0.0/0`, `::/0`), stop nginx from starting. Only list proxies you control.
+
+**Outside the bundled Compose setup** (Kubernetes, a shared VPC, a backend port reachable from other hosts) the default `TRUSTED_PROXY_CIDRS` is too broad: any host on a private network that can reach the backend could claim another client's IP. Set it to the address(es) of the proxy in front of the backend, e.g. `TRUSTED_PROXY_CIDRS=10.42.0.15/32`. Entries that trust every address (`/0`) are ignored. Never publish the backend port directly.
+
+**Locked out?** List and delete policies from the host:
+
+```sh
+docker compose exec backend python manage.py libreseal_clear_network_policies          # list
+docker compose exec backend python manage.py libreseal_clear_network_policies --yes    # delete all
+docker compose exec backend python manage.py libreseal_clear_network_policies --organisation <ID or name> --yes
+```
+
+Deletions are recorded in each organisation's audit log as *Server administrator (manage.py …)*.
+
 ## Backup and restore
 
 ```sh
@@ -104,7 +134,6 @@ A restore needs the dump **and the same `.env`** (`SERVER_SECRET`, `SECRET_KEY`,
 
 - **API, token formats and cryptography are unchanged** from Phase Console v2.77.2; existing Phase SDKs and the Phase CLI should keep working (only the `libreseal` CLI is verified).
 - **Removed proprietary code.** Upstream ships some features only under the *Phase Console Enterprise License* (`ee/` directories): dynamic secrets, secret rotation, log streams, SCIM, organisation-level OIDC SSO, license activation and billing. LibreSeal does not contain that code; the UI shows these features as *not available* and their APIs return 404 or an explicit error. Re-implementations will only be accepted as clean-room work (written without consulting `ee/` sources), each in its own OpenSpec change.
-- **Network access policies** cannot be enforced (the upstream verifier is in `ee/`). Creating/assigning policies is refused; accounts that already have policies (migrated data) are **denied** until an admin removes them with `docker compose exec backend python manage.py libreseal_clear_network_policies --yes`.
 - **Migrating from Phase**: restore a Phase `pg_dump` with `libreseal-restore.sh` using the original `SECRET_KEY`/`SERVER_SECRET`. Remove dynamic and rotating secrets in Phase first (revoking their credentials): LibreSeal cannot serve them nor revoke their credentials. Clients that request dynamic secrets get an explicit error in environments that still hold them, and deleting an app, environment or folder that holds live credentials is refused. `docker compose exec backend python manage.py libreseal_remove_legacy_credentials` lists them and, once the credentials are revoked at the provider, removes them (`--yes --credentials-revoked`).
 - **No plans or quotas.** The `plan` fields remain in the database/GraphQL schema for compatibility only.
 - **No telemetry.** The UI only talks to your server (verified by capturing browser and container traffic with password sign-in); Next.js telemetry is disabled. Exception: users who sign in with Google, GitHub or GitLab have their profile picture loaded from that provider (`lh3.googleusercontent.com`, `avatars.githubusercontent.com`, `gitlab.com`, the only external image origins allowed by the CSP). Third-party syncs and OAuth providers you configure obviously contact their services.

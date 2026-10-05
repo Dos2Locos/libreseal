@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny
 
 from api.utils.identity.common import (
+    network_policy_denial,
     resolve_service_account,
     mint_service_account_token,
 )
@@ -78,6 +79,9 @@ def aws_iam_auth(request):
     service_account = resolve_service_account(account_id)
     if service_account is None:
         return JsonResponse({"error": "Service account not found"}, status=404)
+    denial = network_policy_denial(request, service_account)
+    if denial is not None:
+        return denial
     if not service_account.server_wrapped_keyring:
         return JsonResponse(
             {"error": "Server-side key management must be enabled"}, status=403

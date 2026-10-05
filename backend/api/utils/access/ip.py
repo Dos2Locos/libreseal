@@ -1,4 +1,47 @@
-from ipaddress import ip_address
+import logging
+from ipaddress import ip_address, ip_network
+
+from django.conf import settings
+
+# Networks whose connections may set X-Real-IP / X-Forwarded-For. Defaults to
+# loopback and private ranges (the Docker Compose network where the bundled
+# nginx runs). Override with the TRUSTED_PROXY_CIDRS setting.
+logger = logging.getLogger(__name__)
+
+DEFAULT_TRUSTED_PROXY_CIDRS = (
+    "127.0.0.0/8",
+    "::1/128",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "fc00::/7",
+)
+
+
+def _trusted_proxy_networks():
+    cidrs = getattr(settings, "TRUSTED_PROXY_CIDRS", None) or DEFAULT_TRUSTED_PROXY_CIDRS
+    networks = []
+    for cidr in cidrs:
+        try:
+            network = ip_network(cidr.strip(), strict=False)
+        except ValueError:
+            logger.warning("Ignoring invalid TRUSTED_PROXY_CIDRS entry %r", cidr)
+            continue
+        if network.prefixlen == 0:
+            # Trusting every address would let any client spoof its IP.
+            logger.warning("Ignoring TRUSTED_PROXY_CIDRS entry %r: trusts every client", cidr)
+            continue
+        networks.append(network)
+    return networks
+
+
+def is_trusted_proxy(ip):
+    try:
+        addr = ip_address(ip)
+    except (TypeError, ValueError):
+        return False
+    addr = getattr(addr, "ipv4_mapped", None) or addr
+    return any(addr.version == n.version and addr in n for n in _trusted_proxy_networks())
 
 
 def _validate_ip(raw_ip):
@@ -13,11 +56,36 @@ def _validate_ip(raw_ip):
         return None
 
 
+def _client_from_forwarded_for(header):
+    """Client IP from an X-Forwarded-For chain appended by trusted proxies.
+
+    Walks the chain from the right (the entry added by the proxy closest to
+    us) skipping trusted proxies; the first untrusted address is the client.
+    Entries to its left were supplied by the client and are ignored. Returns
+    None when the chain is unusable (empty or a malformed entry is reached).
+    """
+    entries = [e.strip() for e in header.split(",")]
+    for entry in reversed(entries):
+        ip = _validate_ip(entry)
+        if ip is None:
+            return None
+        if not is_trusted_proxy(ip):
+            return ip
+    # Every hop is a trusted (internal) address: the left-most one is the
+    # client, e.g. a host on the private network.
+    return _validate_ip(entries[0]) if entries else None
+
+
 def get_client_ip(request):
     """
     Get the client IP address as a single string.
 
-    Checks headers in order: X-Real-IP, X-Forwarded-For (first IP), REMOTE_ADDR.
+    Forwarded headers are honoured only when the direct peer (REMOTE_ADDR)
+    is a trusted proxy; otherwise they could be spoofed by any client that
+    reaches the backend directly. X-Real-IP (set by the bundled nginx) is
+    preferred; X-Forwarded-For is resolved right to left, skipping trusted
+    proxies, so client-supplied entries are never used. Falls back to
+    REMOTE_ADDR.
 
     Args:
         request: Django request object
@@ -25,18 +93,17 @@ def get_client_ip(request):
     Returns:
         str | None: The client IP address (IPv4 or IPv6)
     """
-    # Prefer X-Real-IP (set by nginx)
-    ip = _validate_ip(request.META.get("HTTP_X_REAL_IP"))
-    if ip:
-        return ip
+    remote_addr = _validate_ip(request.META.get("REMOTE_ADDR"))
 
-    # Fall back to X-Forwarded-For (first entry is the original client)
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if x_forwarded_for:
-        first_ip = x_forwarded_for.split(",")[0]
-        ip = _validate_ip(first_ip)
+    if remote_addr and is_trusted_proxy(remote_addr):
+        ip = _validate_ip(request.META.get("HTTP_X_REAL_IP"))
         if ip:
             return ip
 
-    # Fall back to REMOTE_ADDR (always set by WSGI)
-    return _validate_ip(request.META.get("REMOTE_ADDR"))
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if x_forwarded_for:
+            ip = _client_from_forwarded_for(x_forwarded_for)
+            if ip:
+                return ip
+
+    return remote_addr

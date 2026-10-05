@@ -56,12 +56,26 @@ def test_team_creation_passes_feature_gate_on_any_plan(MockOrg, _perm, _member, 
 
 
 # ---------------------------------------------------------------------------
-# Network access policies: configuration refused, enforcement fails closed
+# Network access policies with the feature disabled in the edition:
+# configuration refused, enforcement fails closed. (Enforcement with the
+# feature enabled is covered by tests/test_network_policies.py.)
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def network_policies_disabled():
+    from backend import edition
+
+    with patch.object(
+        edition,
+        "ENABLED_FEATURES",
+        edition.ENABLED_FEATURES - {edition.Feature.NETWORK_POLICIES},
+    ):
+        yield
+
+
 @patch("backend.graphene.mutations.access.Organisation")
-def test_create_network_policy_refused(MockOrg):
+def test_create_network_policy_refused(MockOrg, network_policies_disabled):
     from backend.graphene.mutations.access import CreateNetworkAccessPolicyMutation
 
     with pytest.raises(GraphQLError, match="not available in LibreSeal"):
@@ -71,14 +85,14 @@ def test_create_network_policy_refused(MockOrg):
     MockOrg.objects.get.assert_not_called()
 
 
-def test_update_network_policy_refused():
+def test_update_network_policy_refused(network_policies_disabled):
     from backend.graphene.mutations.access import UpdateNetworkAccessPolicyMutation
 
     with pytest.raises(GraphQLError, match="not available in LibreSeal"):
         UpdateNetworkAccessPolicyMutation.mutate(None, _info(), [MagicMock()])
 
 
-def test_assigning_network_policies_refused():
+def test_assigning_network_policies_refused(network_policies_disabled):
     from backend.graphene.mutations.access import UpdateAccountNetworkAccessPolicies
 
     account_input = MagicMock(policy_ids=["p1"])
@@ -89,24 +103,24 @@ def test_assigning_network_policies_refused():
 
 
 @patch("api.utils.access.network_policies.NetworkAccessPolicy")
-def test_account_with_policy_is_denied(MockPolicy):
+def test_account_with_policy_is_denied(MockPolicy, network_policies_disabled):
     from api.utils.access.network_policies import network_access_denied
 
     account = MagicMock()
     account.network_policies.exists.return_value = True
 
-    assert network_access_denied(MagicMock(), account) is True
+    assert network_access_denied(MagicMock(), account, "10.0.0.1") is True
 
 
 @patch("api.utils.access.network_policies.NetworkAccessPolicy")
-def test_global_policy_denies_everyone(MockPolicy):
+def test_global_policy_denies_everyone(MockPolicy, network_policies_disabled):
     from api.utils.access.network_policies import network_access_denied
 
     account = MagicMock()
     account.network_policies.exists.return_value = False
     MockPolicy.objects.filter.return_value.exists.return_value = True
 
-    assert network_access_denied(MagicMock(), account) is True
+    assert network_access_denied(MagicMock(), account, "10.0.0.1") is True
 
 
 @patch("api.utils.access.network_policies.NetworkAccessPolicy")
@@ -117,13 +131,13 @@ def test_no_policies_allows(MockPolicy):
     account.network_policies.exists.return_value = False
     MockPolicy.objects.filter.return_value.exists.return_value = False
 
-    assert network_access_denied(MagicMock(), account) is False
+    assert network_access_denied(MagicMock(), account, "10.0.0.1") is False
 
 
 def test_no_organisation_allows():
     from api.utils.access.network_policies import network_access_denied
 
-    assert network_access_denied(None, None) is False
+    assert network_access_denied(None, None, "10.0.0.1") is False
 
 
 @pytest.mark.parametrize("denied,expected", [(True, False), (False, True)])
@@ -137,13 +151,13 @@ def test_rest_permission_uses_fail_closed_check(mock_denied, denied, expected):
     request.auth = {"org_member": None, "service_account": sa}
 
     assert IsIPAllowed().has_permission(request, None) is expected
-    mock_denied.assert_called_once_with(sa.organisation, sa)
+    mock_denied.assert_called_once_with(sa.organisation, sa, None)
 
 
 @patch("backend.graphene.middleware.network_access_denied", return_value=True)
 @patch("backend.graphene.middleware.OrganisationMember")
 @patch("backend.graphene.middleware.Organisation")
-def test_graphql_middleware_fails_closed(MockOrg, MockOM, _denied):
+def test_graphql_middleware_fails_closed(MockOrg, MockOM, _denied, network_policies_disabled):
     from backend.graphene.middleware import (
         IPWhitelistMiddleware,
         NetworkPolicyUnenforceableError,

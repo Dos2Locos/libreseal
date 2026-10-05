@@ -1,5 +1,3 @@
-import { UnavailableBadge } from '@/components/common/UnavailableFeature'
-import { useFeature } from '@/hooks/useFeature'
 import { NetworkAccessPolicyType } from '@/apollo/graphql'
 import { Button } from '@/components/common/Button'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -19,7 +17,6 @@ import { arraysEqual } from '@/utils/crypto'
 
 export const ManageOrgGlobalPolicies = () => {
   const { activeOrganisation: organisation } = useContext(organisationContext)
-  const networkPoliciesAvailable = useFeature('network_policies')
 
   // Permissions
   const userCanReadNetworkPolicies = organisation
@@ -117,13 +114,6 @@ export const ManageOrgGlobalPolicies = () => {
   }
 
   if (!organisation) return <></>
-
-  if (!networkPoliciesAvailable)
-    return (
-      <Button variant="secondary" disabled title="Network access policies are not available in LibreSeal">
-        <FaNetworkWired /> Manage global policies <UnavailableBadge />
-      </Button>
-    )
 
   return (
     <GenericDialog
