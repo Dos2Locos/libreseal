@@ -10,7 +10,7 @@
 - [x] 1.3 Abrir la PR de la rama contra `main`. Corregir los fallos que salgan en la primera ejecución con arreglos mínimos (dependencias, lint, build), sin desactivar jobs; si un arreglo cambia comportamiento del producto, parar y proponerlo aparte. Verificar:
   - `gh pr checks` muestra `guard`, `backend`, `frontend` y `compose-build` en verde;
   - cada arreglo reproducido antes en local con el mismo comando del workflow.
-- [ ] 1.4 Comprobar el escenario "Reaparece código ee/": en una rama desechable con un fichero `backend/ee/x.py`, `scripts/check-libreseal-guard.sh` falla en local y el check `guard` falla en una PR borrador. Cerrar la PR y borrar la rama.
+- [x] 1.4 Comprobar el escenario "Reaparece código ee/": en una rama desechable con un fichero `backend/ee/x.py`, `scripts/check-libreseal-guard.sh` falla en local y el check `guard` falla en una PR borrador. Cerrar la PR y borrar la rama.
 
 ## 2. CI de los skills
 
@@ -24,7 +24,7 @@
   - `permissions: contents: read` y acciones fijadas por SHA.
   - Documentar en el README qué valida la CI y cómo ejecutarla en local.
   - Verificar con `shellcheck scripts/validate-skills.sh` y YAML válido.
-- [ ] 2.4 [skills] Desbloquear los workflows del fork como en 1.2, abrir la PR y conseguir el check `validate` en verde. Verificar con `gh pr checks -R Dos2Locos/libreseal-skills`.
+- [x] 2.4 [skills] Desbloquear los workflows del fork como en 1.2, abrir la PR y conseguir el check `validate` en verde. Verificar con `gh pr checks -R Dos2Locos/libreseal-skills`.
 
 ## 3. Protección de main
 
@@ -33,7 +33,7 @@
   - checks obligatorios por repositorio según `design.md`;
   - `strict`, `enforce_admins`, PR obligatoria sin aprobaciones, y sin force-push ni borrado.
   - Verificar con `shellcheck` y ejecutándolo en modo comprobación contra los tres repositorios: debe informar de que la protección falta, sin cambiar nada.
-- [ ] 3.2 Contrastar los nombres de checks exigidos con ejecuciones reales: `gh pr checks` de las PR de 1.3 y 2.4, y la última ejecución de `main` de `libreseal-cli`. Ajustar el script si difieren. Verificar con una ejecución en modo comprobación sin avisos de checks desconocidos.
+- [x] 3.2 Contrastar los nombres de checks exigidos con ejecuciones reales: `gh pr checks` de las PR de 1.3 y 2.4, y la última ejecución de `main` de `libreseal-cli`. Ajustar el script si difieren. Verificar con una ejecución en modo comprobación sin avisos de checks desconocidos.
 - [ ] 3.3 Documentar en el README de `libreseal` (sección Contributing) que `main` está protegida, qué checks exige cada repositorio y cómo reaplicar o retirar la protección. Fusionar las PR de 1.3 y 2.4 con la CI en verde. Verificar que `gh run list --branch main` muestra ejecuciones en verde de ambos repositorios tras el merge.
 
 ## 4. Aplicación y validación

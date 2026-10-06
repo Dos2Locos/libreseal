@@ -165,6 +165,16 @@ LibreSeal uses [OpenSpec](https://github.com/Fission-AI/OpenSpec) for spec-drive
 
 Ground rules: no code derived from `ee/`; never fake plans or licenses; never weaken security controls (fail closed instead); keep API, token and crypto formats compatible unless a change includes a migration plan. Run `scripts/check-libreseal-guard.sh`, backend `pytest` and frontend `yarn test` before opening a PR.
 
+**CI and protected `main`.** `main` in all three repositories only accepts pull requests whose required checks passed and are up to date with `main` (also enforced for admins; no direct pushes, force-pushes or deletion; no approval required while there is a single maintainer):
+
+| Repository | Workflow | Required checks |
+|------------|----------|-----------------|
+| `libreseal` | `LibreSeal CI` | `guard` (no `ee/`, no billing/telemetry deps, deployment script tests), `backend`, `frontend`, `compose-build` |
+| `libreseal-cli` | `Test & Build` | `test / Go Test & Vet (ubuntu-latest\|macos-latest\|windows-latest)`, `install-from-source` |
+| `libreseal-skills` | `Skills CI` | `validate` |
+
+CI never publishes images or releases. Maintainers can rerun it with `gh workflow run "LibreSeal CI" --ref <branch>`. The protection is versioned in [`scripts/github/protect-main.sh`](scripts/github/protect-main.sh): run it without arguments to compare GitHub with the documented rules, `--apply` to (re)apply them, and `--disable` only in an emergency (it needs an admin `gh` login).
+
 ## License
 
 MIT for this repository (see [LICENSE](LICENSE) and [NOTICE](NOTICE)). The CLI is GPL-3.0; the skills are MIT.
