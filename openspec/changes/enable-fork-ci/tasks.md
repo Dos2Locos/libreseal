@@ -34,13 +34,13 @@
   - `strict`, `enforce_admins`, PR obligatoria sin aprobaciones, y sin force-push ni borrado.
   - Verificar con `shellcheck` y ejecutándolo en modo comprobación contra los tres repositorios: debe informar de que la protección falta, sin cambiar nada.
 - [x] 3.2 Contrastar los nombres de checks exigidos con ejecuciones reales: `gh pr checks` de las PR de 1.3 y 2.4, y la última ejecución de `main` de `libreseal-cli`. Ajustar el script si difieren. Verificar con una ejecución en modo comprobación sin avisos de checks desconocidos.
-- [ ] 3.3 Documentar en el README de `libreseal` (sección Contributing) que `main` está protegida, qué checks exige cada repositorio y cómo reaplicar o retirar la protección. Fusionar las PR de 1.3 y 2.4 con la CI en verde. Verificar que `gh run list --branch main` muestra ejecuciones en verde de ambos repositorios tras el merge.
+- [x] 3.3 Documentar en el README de `libreseal` (sección Contributing) que `main` está protegida, qué checks exige cada repositorio y cómo reaplicar o retirar la protección. Fusionar las PR de 1.3 y 2.4 con la CI en verde. Verificar que `gh run list --branch main` muestra ejecuciones en verde de ambos repositorios tras el merge.
 
 ## 4. Aplicación y validación
 
-- [ ] 4.1 Ejecutar `scripts/github/protect-main.sh --apply`. Verificar el escenario "Checks obligatorios configurados" con `gh api repos/Dos2Locos/<repo>/branches/main/protection` en los tres repositorios, y que una segunda ejecución en modo comprobación no informa de diferencias (idempotencia).
-- [ ] 4.2 Validar los escenarios de protección:
+- [x] 4.1 Ejecutar `scripts/github/protect-main.sh --apply`. Verificar el escenario "Checks obligatorios configurados" con `gh api repos/Dos2Locos/<repo>/branches/main/protection` en los tres repositorios, y que una segunda ejecución en modo comprobación no informa de diferencias (idempotencia).
+- [x] 4.2 Validar los escenarios de protección:
   - `git push origin HEAD:main` con un commit de prueba es rechazado en los tres repositorios;
   - una PR de prueba en `libreseal-skills` con un `SKILL.md` inválido tiene `validate` en rojo y `gh pr merge` la rechaza.
   - Cerrar las PR y borrar las ramas de prueba.
-- [ ] 4.3 Registrar en `validation.md` la salida de cada escenario: ejecuciones, checks y respuestas de la API. Ejecutar `openspec validate enable-fork-ci --strict`.
+- [x] 4.3 Registrar en `validation.md` la salida de cada escenario: ejecuciones, checks y respuestas de la API. Ejecutar `openspec validate enable-fork-ci --strict`.
