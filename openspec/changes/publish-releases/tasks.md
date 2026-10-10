@@ -54,25 +54,25 @@ Las tareas que borran tags, publican en GHCR o crean releases tienen efectos fue
   - la verificación con `cosign verify` y `sha256sum -c`.
 
   Documentar también la guía de migración desde instalaciones compiladas: `git pull`, `docker compose pull`, `docker compose up -d`, y borrar las imágenes `libreseal/*:local` antiguas. Documentar en `CONTRIBUTING.md` el proceso de release (`set-version.sh`, PR, tag) y la visibilidad de los paquetes de GHCR. Verificar que los comandos del README coinciden con los scripts y ficheros reales: revisarlos con `grep` contra el árbol.
-- [ ] 3.4 Abrir la PR de `feat/publish-releases`. Verificar que `gh pr checks` muestra `guard`, `backend`, `frontend` y `compose-build` en verde.
+- [x] 3.4 Abrir la PR de `feat/publish-releases`. Verificar que `gh pr checks` muestra `guard`, `backend`, `frontend` y `compose-build` en verde.
 
 ## 4. Release del CLI
 
-- [ ] 4.1 [cli] Rama `feat/publish-releases`. Cambiar `scripts/install-from-source.sh` a `git describe --tags --match 'v[0-9]*' --always --dirty`. Actualizar el texto de `libreseal update` para que mencione `https://github.com/Dos2Locos/libreseal-cli/releases` (binario verificado o compilación desde un tag) y su test, si existe. Verificar:
+- [x] 4.1 [cli] Rama `feat/publish-releases`. Cambiar `scripts/install-from-source.sh` a `git describe --tags --match 'v[0-9]*' --always --dirty`. Actualizar el texto de `libreseal update` para que mencione `https://github.com/Dos2Locos/libreseal-cli/releases` (binario verificado o compilación desde un tag) y su test, si existe. Verificar:
   - `go test ./...` en `src`;
   - `libreseal update` sin red (por ejemplo, con `HTTPS_PROXY=http://127.0.0.1:9`) muestra la URL y termina con 0.
-- [ ] 4.2 [cli] Añadir a `.goreleaser.yaml` el bloque `signs` (cosign `sign-blob --bundle checksums.txt.sigstore.json` sobre `checksums.txt`) y `release.extra_files` con `LICENSE`. Verificar con `goreleaser check` y `goreleaser release --snapshot --clean --skip=sign,publish`. Este último debe generar los 8 binarios, y `dist/libreseal_linux_amd64_v1/libreseal --version` (o la ruta equivalente) debe mostrar la versión del snapshot.
-- [ ] 4.3 [cli] Crear `.github/workflows/release.yml` con:
+- [x] 4.2 [cli] Añadir a `.goreleaser.yaml` el bloque `signs` (cosign `sign-blob --bundle checksums.txt.sigstore.json` sobre `checksums.txt`) y `release.extra_files` con `LICENSE`. Verificar con `goreleaser check` y `goreleaser release --snapshot --clean --skip=sign,publish`. Este último debe generar los 8 binarios, y `dist/libreseal_linux_amd64_v1/libreseal --version` (o la ruta equivalente) debe mostrar la versión del snapshot.
+- [x] 4.3 [cli] Crear `.github/workflows/release.yml` con:
   - `verify` (formato del tag y ancestro de `main`);
   - `test` (`uses: ./.github/workflows/test.yml`);
   - `goreleaser`, con `contents: write`, `id-token: write`, acciones fijadas por SHA y `cosign-installer`.
 
   Verificar que el YAML es válido y `actionlint` no da errores.
-- [ ] 4.4 [cli] Documentar en el README la instalación desde un binario: descarga, `cosign verify-blob` con la identidad del workflow, `sha256sum -c --ignore-missing` y copia al `PATH`. Mantener la compilación desde el código. Abrir la PR y verificar que todos los checks obligatorios del CLI están en verde.
+- [x] 4.4 [cli] Documentar en el README la instalación desde un binario: descarga, `cosign verify-blob` con la identidad del workflow, `sha256sum -c --ignore-missing` y copia al `PATH`. Mantener la compilación desde el código. Abrir la PR y verificar que todos los checks obligatorios del CLI están en verde.
 
 ## 5. Skills
 
-- [ ] 5.1 [skills] Rama `docs/published-images`. Cambiar `docker-compose/SKILL.md` y `docker-compose/refs/*.md`:
+- [x] 5.1 [skills] Rama `docs/published-images`. Cambiar `docker-compose/SKILL.md` y `docker-compose/refs/*.md`:
   - despliegue por defecto con imágenes publicadas (`docker compose up -d`, o el paquete de la release);
   - actualización con `docker compose pull`;
   - compilación con `-f docker-compose.build.yml` como alternativa.
@@ -81,7 +81,7 @@ Las tareas que borran tags, publican en GHCR o crean releases tienen efectos fue
   - `scripts/validate-skills.sh` pasa;
   - `grep -rnE "phasehq/(frontend|backend)|console\.phase\.dev|pkg\.phase\.dev" docker-compose/` está vacío;
   - los comandos coinciden con el README de `libreseal` de 3.3.
-- [ ] 5.2 [skills] Abrir la PR y verificar que el check `validate` está en verde.
+- [x] 5.2 [skills] Abrir la PR y verificar que el check `validate` está en verde.
 
 ## 6. Tags y protección
 
