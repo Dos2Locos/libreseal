@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Branch protection for `main` in the LibreSeal repositories.
+# Branch protection for `main` in the LibreSeal repositories, and the
+# `release-tags` ruleset that limits `v*` release tags to admins.
 #
 #   scripts/github/protect-main.sh            # check: show differences, change nothing
 #   scripts/github/protect-main.sh --apply    # apply the documented protection
@@ -10,6 +11,8 @@
 # Protection: changes only via pull request (no required approvals: single
 # maintainer), required CI checks up to date with main, enforced for admins,
 # no force-push, no deletion. See openspec/specs/continuous-integration.
+# Release tags (libreseal, libreseal-cli): only repository admins may create,
+# move or delete `v*` tags. See openspec/specs/release-publishing.
 set -euo pipefail
 
 ORG="${LIBRESEAL_GH_ORG:-Dos2Locos}"
@@ -30,13 +33,19 @@ checks_for() {
   esac
 }
 REPOS=(libreseal libreseal-cli libreseal-skills)
+TAG_RULESET="release-tags"
+
+# Repositories that publish releases from `v*` tags.
+has_release_tags() {
+  case "$1" in libreseal | libreseal-cli) return 0 ;; *) return 1 ;; esac
+}
 
 mode="check"
 case "${1:-}" in
   "") ;;
   --apply) mode="apply" ;;
   --disable) mode="disable" ;;
-  -h | --help) sed -n '2,12p' "$0"; exit 0 ;;
+  -h | --help) sed -n '2,15p' "$0"; exit 0 ;;
   *) echo "unknown option: $1" >&2; exit 2 ;;
 esac
 
@@ -87,6 +96,84 @@ import json, sys
 print(json.dumps({"strict": True, "contexts": sorted(sys.argv[1:]), "enforce_admins": True,
                   "pull_request": True, "approvals": 0, "force_pushes": False,
                   "deletions": False}, sort_keys=True))' "$@"
+}
+
+tag_ruleset_json() {
+  python3 - "$TAG_RULESET" <<'PY'
+import json, sys
+print(json.dumps({
+    "name": sys.argv[1],
+    "target": "tag",
+    "enforcement": "active",
+    "conditions": {"ref_name": {"include": ["refs/tags/v*"], "exclude": []}},
+    "rules": [{"type": "creation"}, {"type": "update"}, {"type": "deletion"}],
+    # Repository admin role (id 5) is the only actor allowed to bypass.
+    "bypass_actors": [{"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}],
+}))
+PY
+}
+
+# Id of the release-tags ruleset, empty when it does not exist.
+tag_ruleset_id() {
+  gh api "repos/$ORG/$1/rulesets?includes_parents=false" \
+    -q ".[] | select(.name == \"$TAG_RULESET\" and .target == \"tag\") | .id"
+}
+
+# Normalised view of a ruleset (GET response or desired JSON) for comparison.
+ruleset_summary() {
+  python3 -c '
+import json, sys
+r = json.load(sys.stdin)
+cond = (r.get("conditions") or {}).get("ref_name") or {}
+print(json.dumps({
+    "target": r.get("target"),
+    "enforcement": r.get("enforcement"),
+    "include": sorted(cond.get("include") or []),
+    "exclude": sorted(cond.get("exclude") or []),
+    "rules": sorted(x["type"] for x in r.get("rules") or []),
+    "bypass": sorted([b.get("actor_type"), b.get("actor_id"), b.get("bypass_mode")]
+                     for b in r.get("bypass_actors") or []),
+}, sort_keys=True))'
+}
+
+tag_rules() {
+  local repo="$1" id want have
+  has_release_tags "$repo" || return 0
+  id="$(tag_ruleset_id "$repo")"
+  case "$mode" in
+    check)
+      if [ -z "$id" ]; then
+        echo "  release tags: ruleset $TAG_RULESET missing"
+        return 1
+      fi
+      want="$(tag_ruleset_json | ruleset_summary)"
+      have="$(gh api "repos/$ORG/$repo/rulesets/$id" | ruleset_summary)"
+      if [ "$have" = "$want" ]; then
+        echo "  release tags: as documented"
+      else
+        echo "  release tags differ"
+        echo "    current: $have"
+        echo "    desired: $want"
+        return 1
+      fi
+      ;;
+    apply)
+      if [ -z "$id" ]; then
+        tag_ruleset_json | gh api -X POST "repos/$ORG/$repo/rulesets" --input - >/dev/null
+      else
+        tag_ruleset_json | gh api -X PUT "repos/$ORG/$repo/rulesets/$id" --input - >/dev/null
+      fi
+      echo "  release tags ruleset applied"
+      ;;
+    disable)
+      if [ -n "$id" ]; then
+        gh api -X DELETE "repos/$ORG/$repo/rulesets/$id" >/dev/null
+        echo "  release tags ruleset removed"
+      else
+        echo "  no release tags ruleset"
+      fi
+      ;;
+  esac
 }
 
 # Warn when a required check has not run on the latest main commit: requiring
@@ -141,5 +228,6 @@ for repo in "${REPOS[@]}"; do
       fi
       ;;
   esac
+  tag_rules "$repo" || status=1
 done
 exit "$status"
