@@ -1,5 +1,60 @@
 # Validation — publish-releases
 
+Registro de las comprobaciones ejecutadas el 2026-10-10. Solo se anota lo que se ha ejecutado de verdad, y los secretos usados son sintéticos (nunca se imprimieron).
+
+**Versiones verificadas:**
+- `libreseal`: `c8dd0ac8`, tag `v0.1.0-rc.1`.
+- `libreseal-cli`: `21039c4e`, tag `v0.1.0-rc.1`.
+- `libreseal-skills`: `b3763484`.
+
+## Entorno de prueba
+
+Las pruebas locales corrieron en macOS arm64 con Docker 29.8.2 y Compose v5.5.1. Había que esquivar dos cosas: el stack `tienda` ocupa los puertos 80/443, y el stack de pruebas `clean`, de una sesión anterior, usa los nombres fijos de contenedor y el volumen `libreseal-postgres-data`. Por eso las pruebas de despliegue usaron:
+- los puertos 8080/8443, con `libreseal-init.sh --https-port 8443 --http-port 8080`;
+- un override solo de prueba (fuera del repositorio), que asigna a cada prueba su propio proyecto de Compose y su propio volumen y quita los `container_name` fijos.
+
+No se cambió ningún fichero del producto para las pruebas.
+
+## Resultados
+
+| Tarea | Comprobación | Resultado |
+|---|---|---|
+| 1.1 | `scripts/tests/test-set-version.sh`; `scripts/set-version.sh 1.2` | Pasa; `1.2` → código 2. El repositorio no cambia |
+| 1.2 | `check-libreseal-guard.sh` con el árbol actual y con `backend/version.txt=v0.2.0` | `OK`; con la versión cambiada falla con `versions disagree: backend/version.txt=v0.2.0 frontend/package.json=0.1.0 docker-compose.yml=0.1.0` |
+| 2.1 | `docker compose -f docker-compose.yml -f docker-compose.build.yml build` | Las 3 imágenes tienen `/usr/share/libreseal/NOTICE` (copyright de Phi Security Inc. y aviso de no afiliación) y la etiqueta `org.opencontainers.image.licenses=MIT` |
+| 2.2 | `docker compose config -q` (normal y con el override); `test-libreseal-init.sh`; guard | Todo válido |
+| 2.3 | `actionlint` 1.7.7 (imagen fijada por digest) sobre `.github/workflows`; build local con el override | Sin errores; build correcto |
+| 2.4 | Instalación desde el código con el override (proyecto aislado) | Todos los servicios `running`, backend `healthy`, migraciones con código 0. `/service/health/` → `{"status": "alive", "version": "v0.1.0"}`. `/` → 307 a `/login`, título `Log in \| LibreSeal` |
+| 3.1 | `scripts/tests/test-deploy-bundle.sh`; `shellcheck` 0.10.0 | Pasa (contenido, compose fijado y sin `build:`, init funciona dentro del paquete, versión distinta rechazada); `shellcheck` limpio |
+| 3.2 | Lógica del job `verify` ejecutada en local con el mismo script | `v0.1.0` sobre `origin/main` → 0. Versión distinta, commit fuera de `main` (`git commit-tree`) y formato `v0.1` → 1, con el mensaje correspondiente |
+| 3.4 / 4.4 / 5.2 | PRs libreseal#7, libreseal-cli#2 y libreseal-skills#4 | Todos los checks obligatorios en verde |
+| 4.1 | `go test ./cmd -run Update`; `libreseal update` con `HTTPS_PROXY=http://127.0.0.1:9` | Pasa; código 0 y muestra `…/libreseal-cli/releases` |
+| 4.2 | goreleaser v2.18.3: `check` y `release --snapshot --clean --skip=sign,publish` | Configuración válida; genera 8 binarios `libreseal_<ver>_<os>_<arch>` y `checksums.txt`. Se ejecutó en el host porque el disco de la VM de Docker estaba lleno |
+| 5.1 | `scripts/validate-skills.sh`; búsqueda de referencias a Phase en `docker-compose/` | Pasa; la búsqueda no encuentra nada |
+| 6.1 | `shellcheck`; `protect-main.sh` en modo comprobación antes de aplicar | Limpio; informa `release tags: ruleset release-tags missing` sin cambiar nada |
+| 6.2 | Merges `1a7b70e1`, `21039c4e` y `b3763484`; CI de `main` | `success` en los tres repositorios |
+| 6.3 | Borrado por API de los tags heredados; `git ls-remote --tags` | 210 + 52 borrados, 0 fallos; ninguno queda en los dos repositorios. Clones locales: `git fetch --prune --prune-tags origin` y `remote.upstream.tagOpt --no-tags` |
+| 6.4 | `protect-main.sh --apply`, modo comprobación y `gh api …/rulesets/<id>` | Código 0. `release-tags`: target `tag`, `active`, `refs/tags/v*`, reglas `creation`, `update` y `deletion`, excepción solo para `RepositoryRole` 5 (`always`) en los dos repositorios |
+| 7.1 | PR #8 (`set-version.sh 0.1.0-rc.1`) en verde y fusionada (`c8dd0ac8`); tag `v0.1.0-rc.1`; run `38084531693` | `success`: `verify`, `ci` ×4, `build` ×6 en runners nativos amd64/arm64, `publish` ×3 y `release`. Borrador marcado como prerelease con `libreseal-deploy-0.1.0-rc.1.tar.gz` y `checksums.txt` |
+| 7.2 | Paquetes de GHCR públicos | La organización no permitía paquetes públicos: el admin activó *Package creation → Public* y cambió los 3 paquetes. Petición anónima del manifiesto → 200; `docker pull` sin credenciales funciona |
+| 7.3 | `imagetools inspect`, SBOM, `cosign verify` v3.1.3, `NOTICE` y `latest` | Las 3 imágenes tienen `linux/amd64` y `linux/arm64`, más los manifiestos de atestación. SBOM SPDX-2.3 por plataforma (backend 207 paquetes, frontend 323, nginx 153). `cosign verify` con la identidad `release.yml@refs/tags/v` → *claims validated*. `NOTICE` presente; etiquetas `version=0.1.0-rc.1` y `revision=c8dd0ac8`. `:latest` → 404 |
+| 7.4 | Tags desechables `v0.1.0-rc.90` (sobre `main`, versión distinta) y `v0.1.0-rc.91` (rama sin fusionar, versión igual) | Los dos fallan en `verify` (`does not match backend/version.txt (v0.1.0-rc.1)` y `… which is not on main`); el resto de jobs se salta. GHCR `0.1.0-rc.90/91` → 404. Tags, rama y ejecuciones borrados |
+| 7.5 | Paquete descargado en un directorio sin clon | `shasum -a 256 -c` OK; `libreseal-init.sh` y `docker compose up -d` solo descargan imágenes de `ghcr.io/dos2locos` (no compilan). Servicios sanos; health `v0.1.0-rc.1`; login de LibreSeal. Con Playwright se crearon la cuenta, la organización, la app `demo`, la cuenta de servicio `agent-demo` (solo Development) y su token. El binario publicado `linux_arm64` creó y actualizó un secreto sintético, y `libreseal run` → `MATCH` |
+| 7.6 | Release del CLI `v0.1.0-rc.1` (run `38084554069`) | Borrador marcado como prerelease con 8 binarios, `checksums.txt`, `checksums.txt.sigstore.json` y `LICENSE`. `cosign verify-blob` → `Verified OK`; `shasum -c --ignore-missing` → 8 OK. El binario y `install-from-source.sh` desde el tag → `0.1.0-rc.1` |
+| 7.7 | Instancia compilada desde `00d44f03` (antes del cambio) migrada con la guía del README | Antes: imágenes `libreseal/*:local`, `v0.1.0`, secreto sintético creado. Migración: `libreseal-backup.sh`, `git checkout v0.1.0-rc.1`, `docker compose pull`, `docker compose up -d`. Los contenedores de la app se recrean con las imágenes de GHCR y postgres no (mismo volumen); health `v0.1.0-rc.1`. Después: `libreseal run` → `MATCH`, y la UI lista la clave y muestra el valor original |
+
+## Desviaciones y comprobaciones no ejecutadas
+
+- **Documentación del proceso de release.** Está en la sección *Contributing* del `README.md` de cada repositorio, no en `CONTRIBUTING.md`: el del servidor sigue siendo la guía heredada de Phase y el CLI no tiene uno.
+- **Escenarios que nombran `0.1.0` o `v0.1.0`.** Son "Instalación limpia", "Versión del CLI compilado desde el código", "Binario con la versión del tag" e "Instalación desde un binario publicado". Se validaron con `0.1.0-rc.1`, el mismo flujo con otra versión. Volver a ejecutarlos con `v0.1.0` queda en *Workflow follow-up*.
+- **Imágenes `linux/amd64`.** Solo se comprobó que se construyen, publican y firman. No se ejecutaron porque el host es arm64.
+- **Firma keyless.** No se pudo probar en local porque necesita la identidad OIDC de GitHub Actions; quedó validada en las releases `-rc.1`.
+- **Efectos colaterales autorizados:**
+  - `docker builder prune -f` liberó 16,81 GB de caché de build sin uso.
+  - `docker logout ghcr.io`, ejecutado para probar sin credenciales, borró el login de `ghcr.io` del usuario en Docker.
+- **Ramas heredadas.** El fork del servidor conserva decenas de ramas de Phase (`dependabot/*`, `feat--*`, …). Quedan fuera de este cambio.
+
+
 ## Tags heredados borrados (tarea 6.3)
 
 Borrados el 2026-10-10 por API (`DELETE /repos/Dos2Locos/<repo>/git/refs/tags/<tag>`). Siguen existiendo en `phasehq/console` y `phasehq/cli`. Para recrear uno: `gh api -X POST repos/Dos2Locos/<repo>/git/refs -f ref=refs/tags/<tag> -f sha=<sha>`. El SHA es el valor de la referencia (objeto tag si era anotado).
