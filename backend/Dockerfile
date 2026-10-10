@@ -26,6 +26,9 @@ RUN apk add --no-cache curl ca-certificates
 ADD https://truststore.pki.rds.amazonaws.com/eu-central-1/eu-central-1-bundle.pem /etc/ssl/certs/rds-ca-bundle.pem
 RUN chmod 644 /etc/ssl/certs/rds-ca-bundle.pem
 
+# LICENSE and NOTICE come from the repository root (build context "repo").
+COPY --from=repo LICENSE NOTICE /usr/share/libreseal/
+
 RUN addgroup -S app && adduser -S app -G app
 ADD . /app
 WORKDIR /app
@@ -35,6 +38,16 @@ USER app
 
 ENV VIRTUAL_ENV /env
 ENV PATH /env/bin:$PATH
+
+# OCI metadata; version and revision are set by the release workflow.
+ARG LIBRESEAL_VERSION=dev
+ARG LIBRESEAL_REVISION=unknown
+LABEL org.opencontainers.image.title="libreseal-backend" \
+      org.opencontainers.image.description="LibreSeal backend (Django API and worker). Independent fork of Phase Console; not affiliated with or endorsed by Phase / Phi Security Inc." \
+      org.opencontainers.image.source="https://github.com/Dos2Locos/libreseal" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${LIBRESEAL_VERSION}" \
+      org.opencontainers.image.revision="${LIBRESEAL_REVISION}"
 
 EXPOSE 8000
 CMD ["/app/scripts/start.sh"]
