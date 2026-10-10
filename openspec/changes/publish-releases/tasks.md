@@ -96,11 +96,11 @@ Las tareas que borran tags, publican en GHCR o crean releases tienen efectos fue
 
 ## 7. Release candidata y validación
 
-- [ ] 7.1 Servidor: PR con `scripts/set-version.sh 0.1.0-rc.1`. Con los checks en verde y la confirmación del usuario, fusionarla y empujar el tag `v0.1.0-rc.1`. Verificar:
+- [x] 7.1 Servidor: PR con `scripts/set-version.sh 0.1.0-rc.1`. Con los checks en verde y la confirmación del usuario, fusionarla y empujar el tag `v0.1.0-rc.1`. Verificar:
   - el workflow `release.yml` termina en verde;
   - existe una release en borrador marcada como prerelease, con `libreseal-deploy-0.1.0-rc.1.tar.gz` y `checksums.txt`.
-- [ ] 7.2 Marcar como públicos en la web de GitHub (lo hace un admin) los paquetes `libreseal-backend`, `libreseal-frontend` y `libreseal-nginx`. Verificar con `docker logout ghcr.io` y `docker pull ghcr.io/dos2locos/libreseal-backend:0.1.0-rc.1` sin credenciales.
-- [ ] 7.3 Verificar las imágenes publicadas:
+- [x] 7.2 Marcar como públicos en la web de GitHub (lo hace un admin) los paquetes `libreseal-backend`, `libreseal-frontend` y `libreseal-nginx`. Verificar con `docker logout ghcr.io` y `docker pull ghcr.io/dos2locos/libreseal-backend:0.1.0-rc.1` sin credenciales.
+- [x] 7.3 Verificar las imágenes publicadas:
   - `imagetools inspect` muestra `linux/amd64` y `linux/arm64` en las tres;
   - `cosign verify` con la identidad del workflow del tag termina con éxito en las tres;
   - el SBOM SPDX está presente por plataforma;
@@ -108,30 +108,30 @@ Las tareas que borran tags, publican en GHCR o crean releases tienen efectos fue
   - `latest` no existe o no cambia.
 
   Si el SBOM no aparece, aplicar la mitigación de `design.md`, repetir con `-rc.2` y anotar la causa.
-- [ ] 7.4 Comprobar los rechazos en el servidor con tags `-rc` desechables:
+- [x] 7.4 Comprobar los rechazos en el servidor con tags `-rc` desechables:
   - un tag cuyo `version.txt` no coincide;
   - un tag sobre un commit de una rama sin fusionar.
 
   En ambos casos, `release.yml` debe fallar en `verify` y no debe aparecer ninguna etiqueta nueva en GHCR. Borrar los tags y ejecuciones de prueba.
-- [ ] 7.5 Despliegue desde el paquete en un directorio sin clon:
+- [x] 7.5 Despliegue desde el paquete en un directorio sin clon:
   - descargar los adjuntos y ejecutar `sha256sum -c checksums.txt`;
   - descomprimir, ejecutar `./scripts/libreseal-init.sh` y `docker compose up -d`;
   - comprobar que no se compila nada, que los servicios están `healthy`, que `/service/health/` devuelve `v0.1.0-rc.1` y que el login de LibreSeal carga;
   - crear una app y un secreto sintético, y leerlo con el CLI de 7.6.
 
   Bajar la instancia al terminar.
-- [ ] 7.6 [cli] Con confirmación del usuario, empujar el tag `v0.1.0-rc.1` en `libreseal-cli`. Verificar:
+- [x] 7.6 [cli] Con confirmación del usuario, empujar el tag `v0.1.0-rc.1` en `libreseal-cli`. Verificar:
   - la release en borrador contiene 8 binarios, `checksums.txt`, `checksums.txt.sigstore.json` y `LICENSE`;
   - `cosign verify-blob` y `sha256sum -c --ignore-missing` pasan;
   - `libreseal_0.1.0-rc.1_<os>_<arch> --version` muestra `0.1.0-rc.1`;
   - desde un clon en el tag, `install-from-source.sh` produce la misma versión.
-- [ ] 7.7 Migración de una instalación compilada:
+- [x] 7.7 Migración de una instalación compilada:
   - levantar una instancia desde el `main` anterior a este cambio con `docker compose up -d --build` y un secreto sintético;
   - seguir la guía de migración del README hacia `0.1.0-rc.1`;
   - comprobar que el secreto se lee por la UI y por el CLI con el mismo valor.
 
   Bajar la instancia y borrar el volumen de prueba.
-- [ ] 7.8 Escribir `validation.md` con los comandos ejecutados y sus resultados en 2.4, 6.3, 6.4 y 7.1–7.7, la lista de tags borrados y cualquier comprobación que no se haya podido ejecutar y por qué. Verificar con `openspec validate publish-releases --strict`.
+- [x] 7.8 Escribir `validation.md` con los comandos ejecutados y sus resultados en 2.4, 6.3, 6.4 y 7.1–7.7, la lista de tags borrados y cualquier comprobación que no se haya podido ejecutar y por qué. Verificar con `openspec validate publish-releases --strict`.
 
 ## Workflow follow-up
 
