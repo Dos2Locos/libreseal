@@ -46,7 +46,7 @@ No se cambió ningún fichero del producto para las pruebas.
 ## Desviaciones y comprobaciones no ejecutadas
 
 - **Documentación del proceso de release.** Está en la sección *Contributing* del `README.md` de cada repositorio, no en `CONTRIBUTING.md`: el del servidor sigue siendo la guía heredada de Phase y el CLI no tiene uno.
-- **Escenarios que nombran `0.1.0` o `v0.1.0`.** Son "Instalación limpia", "Versión del CLI compilado desde el código", "Binario con la versión del tag" e "Instalación desde un binario publicado". Se validaron con `0.1.0-rc.1`, el mismo flujo con otra versión. Volver a ejecutarlos con `v0.1.0` queda en *Workflow follow-up*.
+- **Escenarios que nombran `0.1.0` o `v0.1.0`.** Se validaron primero con `0.1.0-rc.1` y después con `v0.1.0` (sección *Release v0.1.0*). La instalación desde el binario publicado se comprobó con la descarga, `cosign verify-blob`, `shasum` y `--version`, sin copiarlo al `PATH` del host.
 - **Imágenes `linux/amd64`.** Solo se comprobó que se construyen, publican y firman. No se ejecutaron porque el host es arm64.
 - **Firma keyless.** No se pudo probar en local porque necesita la identidad OIDC de GitHub Actions; quedó validada en las releases `-rc.1`.
 - **Efectos colaterales autorizados:**
@@ -54,6 +54,17 @@ No se cambió ningún fichero del producto para las pruebas.
   - `docker logout ghcr.io`, ejecutado para probar sin credenciales, borró el login de `ghcr.io` del usuario en Docker.
 - **Ramas heredadas.** El fork del servidor conserva decenas de ramas de Phase (`dependabot/*`, `feat--*`, …). Quedan fuera de este cambio.
 
+
+## Release v0.1.0 (Workflow follow-up)
+
+| Comprobación | Resultado |
+|---|---|
+| libreseal#9 (validación) fusionada (`7c693fd7`); libreseal#10 (`set-version.sh 0.1.0`) en verde y fusionada (`48c90660`); tag `v0.1.0` → run `38087628379` | `success` |
+| Imágenes `0.1.0` | amd64 y arm64; `cosign verify` correcto en las tres; `:latest` tiene el mismo digest que `:0.1.0` (backend `5bcad5071f77`, frontend `da58d24282d6`, nginx `2ef243572047`) |
+| Fallo del CLI: `v0.1.0` y `v0.1.0-rc.1` en el mismo commit (`21039c4`) | GoReleaser publicó otra vez `v0.1.0-rc.1` (run `38087630605`). Se borró el borrador duplicado (nunca publicado). Arreglo en libreseal-cli#3 (`GORELEASER_CURRENT_TAG: ${{ github.ref_name }}`, reproducido en local con un snapshot), fusionado en `32d2656`. El tag `v0.1.0`, sin release publicada, se movió a `32d2656` |
+| Release del CLI `v0.1.0` (run `38088263948`) | `success`; borrador `v0.1.0` sin marcar como prerelease, con 11 adjuntos. `cosign verify-blob` → `Verified OK`; `shasum -c` → 8 OK. `libreseal_0.1.0_darwin_arm64 --version` → `0.1.0`; clon en `v0.1.0` + `install-from-source.sh` → `0.1.0` |
+| Escenario "Instalación limpia": clon limpio en `v0.1.0`, `libreseal-init.sh`, `docker compose up -d` (proyecto aislado) | Solo descarga las imágenes `0.1.0`, no compila nada; health `v0.1.0`; login de LibreSeal |
+| Publicación | Releases `v0.1.0` del servidor y del CLI publicadas como *Latest*; descarga anónima de `libreseal-deploy-0.1.0.tar.gz` → 200. Borradores `v0.1.0-rc.1` borrados; se conservan los tags y las imágenes `0.1.0-rc.1` |
 
 ## Tags heredados borrados (tarea 6.3)
 
