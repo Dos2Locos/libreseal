@@ -90,9 +90,9 @@ Las tareas que borran tags, publican en GHCR o crean releases tienen efectos fue
   - en modo comprobación, el script informa de que falta la regla de tags sin cambiar nada.
 
   Incluirlo en la PR de 3.4 antes de fusionarla.
-- [ ] 6.2 Con confirmación del usuario, fusionar las PRs de 3.4, 4.4 y 5.2 con sus checks en verde. Verificar con `gh run list --branch main` en verde en los tres repositorios.
-- [ ] 6.3 Con confirmación del usuario, guardar en `validation.md` la lista de tags heredados (`git ls-remote --tags`, nombre y SHA) de `libreseal` y `libreseal-cli`, y borrarlos por API. Verificar el escenario "Sin tags heredados": `git ls-remote --tags` vacío en ambos. Documentar en `CONTRIBUTING.md` del servidor y del CLI cómo limpiar los clones locales (`git fetch --prune --prune-tags origin`, `remote.upstream.tagOpt --no-tags`). Aplicarlo al clon local.
-- [ ] 6.4 Aplicar el ruleset con `protect-main.sh --apply`. Verificar el escenario "Regla de tags configurada" con `gh api repos/Dos2Locos/<repo>/rulesets/<id>`, y comprobar que el modo comprobación termina con 0.
+- [x] 6.2 Con confirmación del usuario, fusionar las PRs de 3.4, 4.4 y 5.2 con sus checks en verde. Verificar con `gh run list --branch main` en verde en los tres repositorios.
+- [x] 6.3 Con confirmación del usuario, guardar en `validation.md` la lista de tags heredados (`git ls-remote --tags`, nombre y SHA) de `libreseal` y `libreseal-cli`, y borrarlos por API. Verificar el escenario "Sin tags heredados": `git ls-remote --tags` vacío en ambos. Documentar en `CONTRIBUTING.md` del servidor y del CLI cómo limpiar los clones locales (`git fetch --prune --prune-tags origin`, `remote.upstream.tagOpt --no-tags`). Aplicarlo al clon local.
+- [x] 6.4 Aplicar el ruleset con `protect-main.sh --apply`. Verificar el escenario "Regla de tags configurada" con `gh api repos/Dos2Locos/<repo>/rulesets/<id>`, y comprobar que el modo comprobación termina con 0.
 
 ## 7. Release candidata y validación
 
