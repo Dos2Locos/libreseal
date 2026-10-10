@@ -6,7 +6,7 @@ Free, self-hosted secrets management for homelabs and small teams — web UI, RE
 
 ## Status
 
-**v0.1.0 — early, homelab-ready.** The core (apps, environments, secrets, service accounts, RBAC, audit logs, syncs, recovery) is inherited from Phase Console v2.77.2 and verified end to end with Docker Compose, the `libreseal` CLI and the agent skills (see [Verified combination](#verified-combination)). There are no pre-built images or packages yet: everything is built from source.
+**v0.1.0 — early, homelab-ready.** The core (apps, environments, secrets, service accounts, RBAC, audit logs, syncs, recovery) is inherited from Phase Console v2.77.2 and verified end to end with Docker Compose, the `libreseal` CLI and the agent skills (see [Verified combination](#verified-combination)). Releases publish signed multi-arch images (`linux/amd64`, `linux/arm64`) to `ghcr.io/dos2locos` and signed CLI binaries; building everything from source remains supported.
 
 | Area | State |
 |------|-------|
@@ -22,14 +22,46 @@ Free, self-hosted secrets management for homelabs and small teams — web UI, RE
 
 ## Quick start (server)
 
-Requirements: Docker with Compose v2, git, openssl, ~4 GB RAM for the first build.
+Requirements: Docker with Compose v2.17+ and openssl. Nothing is compiled: `docker compose up -d` pulls the published images `ghcr.io/dos2locos/libreseal-{backend,frontend,nginx}` pinned to the version of the files you run.
+
+From a release's deployment bundle (no clone needed; replace `X.Y.Z` with a version from [Releases](https://github.com/Dos2Locos/libreseal/releases)):
 
 ```sh
-git clone https://github.com/Dos2Locos/libreseal.git
-cd libreseal
+curl -fLO https://github.com/Dos2Locos/libreseal/releases/download/vX.Y.Z/libreseal-deploy-X.Y.Z.tar.gz
+curl -fLO https://github.com/Dos2Locos/libreseal/releases/download/vX.Y.Z/checksums.txt
+sha256sum -c checksums.txt
+tar -xzf libreseal-deploy-X.Y.Z.tar.gz && cd libreseal-deploy-X.Y.Z
 ./scripts/libreseal-init.sh                       # writes .env (mode 600) with random secrets
 # or: ./scripts/libreseal-init.sh --host secrets.lan --https-port 8443 --http-port 8080
-docker compose up -d --build
+docker compose up -d
+```
+
+Or from a clone, checked out at a release tag:
+
+```sh
+git clone --branch vX.Y.Z https://github.com/Dos2Locos/libreseal.git
+cd libreseal
+./scripts/libreseal-init.sh
+docker compose up -d
+```
+
+Deploy from a bundle or a tag, not from `main`: right after a version bump, `main` can point at images that are not published yet.
+
+**Build from source instead** (needs git and ~4 GB RAM for the frontend build; local images are tagged `libreseal/*:local`):
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+**Verify the images** (needs [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)); each image is signed by the release workflow of this repository, without long-lived keys, and carries an SBOM and build provenance:
+
+```sh
+for img in backend frontend nginx; do
+  cosign verify "ghcr.io/dos2locos/libreseal-$img:X.Y.Z" \
+    --certificate-identity-regexp '^https://github.com/Dos2Locos/libreseal/.github/workflows/release.yml@refs/tags/v' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+done
+docker buildx imagetools inspect ghcr.io/dos2locos/libreseal-backend:X.Y.Z --format '{{ json .SBOM }}'
 ```
 
 Open `https://<host>[:port]`, create the first account (no SMTP is needed — email verification is skipped when SMTP is not configured), create your organisation and **store the recovery kit offline**.
@@ -43,7 +75,18 @@ docker compose ps
 curl -ks https://localhost/service/health/        # {"status": "alive", "version": "v0.1.0"}
 ```
 
-Upgrade: `./scripts/libreseal-backup.sh && git pull && docker compose up -d --build` (migrations run automatically).
+Upgrade: back up, switch to the new version's files (new bundle, or `git fetch --tags && git checkout vX.Y.Z`), then `docker compose pull && docker compose up -d` (migrations run automatically). To pin a version without changing files, set `LIBRESEAL_VERSION=X.Y.Z` in `.env`.
+
+**Migrating an instance built from source** (installed before images were published, with `docker compose up -d --build`): keep your `.env` and data volume, then
+
+```sh
+./scripts/libreseal-backup.sh
+git pull                                           # or check out the release tag
+docker compose pull && docker compose up -d        # same container names, volume and .env
+docker image rm libreseal/backend:local libreseal/frontend:local libreseal/nginx:local   # optional cleanup
+```
+
+To keep building from source instead, add `-f docker-compose.yml -f docker-compose.build.yml` to your `docker compose` commands.
 
 ### Configuration
 
@@ -52,6 +95,8 @@ All settings live in `.env` (template: [`.env.example`](.env.example)). Key vari
 ## CLI
 
 The CLI lives in [Dos2Locos/libreseal-cli](https://github.com/Dos2Locos/libreseal-cli) (GPL-3.0):
+
+Install a signed binary from its [Releases](https://github.com/Dos2Locos/libreseal-cli/releases) (verification steps in its README) or build it from source:
 
 ```sh
 git clone https://github.com/Dos2Locos/libreseal-cli.git
@@ -173,7 +218,20 @@ Ground rules: no code derived from `ee/`; never fake plans or licenses; never we
 | `libreseal-cli` | `Test & Build` | `test / Go Test & Vet (ubuntu-latest\|macos-latest\|windows-latest)`, `install-from-source` |
 | `libreseal-skills` | `Skills CI` | `validate` |
 
-CI never publishes images or releases. Maintainers can rerun it with `gh workflow run "LibreSeal CI" --ref <branch>`. The protection is versioned in [`scripts/github/protect-main.sh`](scripts/github/protect-main.sh): run it without arguments to compare GitHub with the documented rules, `--apply` to (re)apply them, and `--disable` only in an emergency (it needs an admin `gh` login).
+`LibreSeal CI` never publishes anything; releases are published only by the `LibreSeal Release` workflow (see [Releases](#releases)). Maintainers can rerun it with `gh workflow run "LibreSeal CI" --ref <branch>`. The protection is versioned in [`scripts/github/protect-main.sh`](scripts/github/protect-main.sh): run it without arguments to compare GitHub with the documented rules, `--apply` to (re)apply them, and `--disable` only in an emergency (it needs an admin `gh` login).
+
+### Releases
+
+Versions are `vX.Y.Z` (`vX.Y.Z-rc.N` for release candidates), starting at `v0.1.0`; the tags inherited from Phase were removed from the LibreSeal forks. Only admins can create, move or delete `v*` tags (ruleset `release-tags`, managed by `scripts/github/protect-main.sh`). To release the server:
+
+1. Open a PR that runs `scripts/set-version.sh X.Y.Z` (updates `backend/version.txt`, `frontend/package.json` and the image tag in `docker-compose.yml`; `guard` fails if they disagree) and merge it.
+2. Tag the merged commit right away: `git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
+3. `LibreSeal Release` checks the tag (format, on `main`, matches `backend/version.txt`), runs the full CI, builds and pushes `ghcr.io/dos2locos/libreseal-{backend,frontend,nginx}:X.Y.Z` (and `latest` unless it is an `-rc`) for amd64 and arm64, signs them with cosign and opens a **draft** release with `libreseal-deploy-X.Y.Z.tar.gz` and `checksums.txt`.
+4. Review the draft and publish it.
+
+New GHCR packages start private: after a package's first push an admin must set it to public (package settings on GitHub; the API cannot change it). The CLI is released the same way from `libreseal-cli` by pushing a `vX.Y.Z` tag on `main`.
+
+To keep local clones free of the old upstream tags: `git fetch --prune --prune-tags origin` and, if you added Phase as a remote, `git config remote.upstream.tagOpt --no-tags`.
 
 ## License
 

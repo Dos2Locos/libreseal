@@ -50,11 +50,23 @@ COPY --from=build /app/public ./public
 COPY --chown=app:app scripts ./scripts
 # Copy next config
 COPY --chown=app:app next.config.js ./
+# LICENSE and NOTICE come from the repository root (build context "repo")
+COPY --from=repo LICENSE NOTICE /usr/share/libreseal/
 
 # Switch back to root to change permissions and then back to app user
 USER root
 RUN chmod 555 ./scripts/*
 USER app
+
+# OCI metadata; version and revision are set by the release workflow.
+ARG LIBRESEAL_VERSION=dev
+ARG LIBRESEAL_REVISION=unknown
+LABEL org.opencontainers.image.title="libreseal-frontend" \
+      org.opencontainers.image.description="LibreSeal web frontend (Next.js). Independent fork of Phase Console; not affiliated with or endorsed by Phase / Phi Security Inc." \
+      org.opencontainers.image.source="https://github.com/Dos2Locos/libreseal" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${LIBRESEAL_VERSION}" \
+      org.opencontainers.image.revision="${LIBRESEAL_REVISION}"
 
 # Expose port and define CMD
 EXPOSE 3000

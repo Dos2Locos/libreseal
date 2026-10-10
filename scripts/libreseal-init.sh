@@ -63,4 +63,4 @@ mv "$tmp" "$ENV_FILE"
 trap - EXIT
 
 echo "Wrote $ENV_FILE (mode 600) for $PUBLIC_URL"
-echo "Next: docker compose up -d --build"
+echo "Next: docker compose up -d"

@@ -1,13 +1,14 @@
 name: LibreSeal CI
 
-# Tests and builds only. Publishing images or releases is intentionally not
-# configured yet (separate change); nothing is pushed to any registry.
+# Tests and builds only; nothing is pushed to any registry. Publishing lives in
+# release.yml, which calls this workflow before building release images.
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -23,6 +24,8 @@ jobs:
         run: |
           scripts/tests/test-libreseal-init.sh
           scripts/tests/test-nginx-real-ip.sh
+          scripts/tests/test-set-version.sh
+          scripts/tests/test-deploy-bundle.sh
 
   backend:
     runs-on: ubuntu-latest
@@ -68,4 +71,4 @@ jobs:
       - name: Build images from source
         run: |
           scripts/libreseal-init.sh
-          docker compose build
+          docker compose -f docker-compose.yml -f docker-compose.build.yml build

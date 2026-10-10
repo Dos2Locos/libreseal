@@ -1,10 +1,14 @@
-# LibreSeal — self-hosted deployment built from this repository's source.
+# LibreSeal — self-hosted deployment using the published LibreSeal images.
 #
 # Quick start:
 #   ./scripts/libreseal-init.sh          # writes .env with random secrets
-#   docker compose up -d --build
+#   docker compose up -d
 #
-# Images are built locally (no images are pulled from Phase). See README.md.
+# Images come from ghcr.io/dos2locos (never from Phase), pinned to this
+# repository's version; set LIBRESEAL_VERSION in .env to pin another one.
+# To build the images from source instead:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# See README.md.
 
 x-backend-env: &backend-env
   OAUTH_REDIRECT_URI: "${PUBLIC_URL}"
@@ -16,10 +20,7 @@ x-backend-env: &backend-env
 services:
   nginx:
     container_name: libreseal-nginx
-    build:
-      context: .
-      dockerfile: ./nginx/Dockerfile
-    image: libreseal/nginx:local
+    image: ghcr.io/dos2locos/libreseal-nginx:${LIBRESEAL_VERSION:-0.1.0}
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -39,10 +40,7 @@ services:
 
   frontend:
     container_name: libreseal-frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: libreseal/frontend:local
+    image: ghcr.io/dos2locos/libreseal-frontend:${LIBRESEAL_VERSION:-0.1.0}
     restart: unless-stopped
     depends_on:
       - backend
@@ -57,10 +55,7 @@ services:
 
   migrations:
     container_name: libreseal-migrations
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: libreseal/backend:local
+    image: ghcr.io/dos2locos/libreseal-backend:${LIBRESEAL_VERSION:-0.1.0}
     command: python manage.py migrate
     env_file: .env
     environment:
@@ -75,7 +70,7 @@ services:
 
   backend:
     container_name: libreseal-backend
-    image: libreseal/backend:local
+    image: ghcr.io/dos2locos/libreseal-backend:${LIBRESEAL_VERSION:-0.1.0}
     restart: unless-stopped
     depends_on:
       migrations:
@@ -99,7 +94,7 @@ services:
 
   worker:
     container_name: libreseal-worker
-    image: libreseal/backend:local
+    image: ghcr.io/dos2locos/libreseal-backend:${LIBRESEAL_VERSION:-0.1.0}
     restart: unless-stopped
     command: python manage.py rqworker default
     depends_on:

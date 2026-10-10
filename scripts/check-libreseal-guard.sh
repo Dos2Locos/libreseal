@@ -25,5 +25,14 @@ if grep -niE '^(stripe|posthog)' backend/requirements.txt; then
   fail "billing or telemetry dependency in backend/requirements.txt"
 fi
 
+# One server version: backend/version.txt, frontend/package.json and the
+# default image tag in docker-compose.yml must agree (see scripts/set-version.sh).
+backend_version="$(tr -d '[:space:]' < backend/version.txt)"
+frontend_version="$(python3 -c 'import json; print(json.load(open("frontend/package.json"))["version"])')"
+compose_versions="$(grep -oE 'LIBRESEAL_VERSION:-[^}]*' docker-compose.yml | cut -d- -f2- | sort -u)"
+if [ "$backend_version" != "v$frontend_version" ] || [ "$compose_versions" != "$frontend_version" ]; then
+  fail "versions disagree: backend/version.txt=$backend_version frontend/package.json=$frontend_version docker-compose.yml=$(echo "$compose_versions" | paste -sd, -)"
+fi
+
 [ $status -eq 0 ] && echo "LibreSeal guard: OK"
 exit $status

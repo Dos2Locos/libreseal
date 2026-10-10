@@ -1,0 +1,41 @@
+# Build the LibreSeal images from this repository's source instead of pulling
+# the published ones:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# Local builds are tagged libreseal/*:local so they are never mistaken for the
+# signed images published to ghcr.io/dos2locos.
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    image: libreseal/nginx:local
+    pull_policy: build
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      additional_contexts:
+        repo: .
+    image: libreseal/frontend:local
+    pull_policy: build
+
+  migrations:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      additional_contexts:
+        repo: .
+    image: libreseal/backend:local
+    pull_policy: build
+
+  backend:
+    image: libreseal/backend:local
+    pull_policy: never
+
+  worker:
+    image: libreseal/backend:local
+    pull_policy: never

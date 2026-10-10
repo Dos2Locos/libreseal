@@ -8,3 +8,14 @@ RUN apt-get update && \
 
 COPY nginx/real-ip.sh /docker-entrypoint.d/40-libreseal-real-ip.sh
 RUN chmod 0755 /docker-entrypoint.d/40-libreseal-real-ip.sh
+COPY LICENSE NOTICE /usr/share/libreseal/
+
+# OCI metadata; version and revision are set by the release workflow.
+ARG LIBRESEAL_VERSION=dev
+ARG LIBRESEAL_REVISION=unknown
+LABEL org.opencontainers.image.title="libreseal-nginx" \
+      org.opencontainers.image.description="LibreSeal reverse proxy (nginx). Independent fork of Phase Console; not affiliated with or endorsed by Phase / Phi Security Inc." \
+      org.opencontainers.image.source="https://github.com/Dos2Locos/libreseal" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${LIBRESEAL_VERSION}" \
+      org.opencontainers.image.revision="${LIBRESEAL_REVISION}"
