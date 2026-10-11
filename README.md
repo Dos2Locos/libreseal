@@ -210,6 +210,8 @@ LibreSeal uses [OpenSpec](https://github.com/Fission-AI/OpenSpec) for spec-drive
 
 Ground rules: no code derived from `ee/`; never fake plans or licenses; never weaken security controls (fail closed instead); keep API, token and crypto formats compatible unless a change includes a migration plan. Run `scripts/check-libreseal-guard.sh`, backend `pytest` and frontend `yarn test` before opening a PR.
 
+Internal routing uses the network aliases `libreseal-backend` and `libreseal-frontend` (never the generic `backend`/`frontend`, which can resolve to other projects' containers when nginx is attached to a shared network such as a PaaS proxy network; `guard` enforces it). With a stack running, `scripts/tests/test-shared-network.sh https://localhost[:port]` attaches nginx (and the frontend with `ATTACH_FRONTEND=1`) to a throwaway network with impostor `backend`/`frontend` services and checks that no request reaches them.
+
 **CI and protected `main`.** `main` in all three repositories only accepts pull requests whose required checks passed and are up to date with `main` (also enforced for admins; no direct pushes, force-pushes or deletion; no approval required while there is a single maintainer):
 
 | Repository | Workflow | Required checks |

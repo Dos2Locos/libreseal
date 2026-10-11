@@ -25,6 +25,12 @@ if grep -niE '^(stripe|posthog)' backend/requirements.txt; then
   fail "billing or telemetry dependency in backend/requirements.txt"
 fi
 
+# Internal routing must use the unique libreseal-* aliases: generic service
+# names can resolve to other projects' containers on shared Docker networks.
+if grep -nE '//(backend|frontend):' nginx/default.conf docker-compose.yml; then
+  fail "generic backend/frontend host in nginx/default.conf or docker-compose.yml; use libreseal-backend / libreseal-frontend"
+fi
+
 # One server version: backend/version.txt, frontend/package.json and the
 # default image tag in docker-compose.yml must agree (see scripts/set-version.sh).
 backend_version="$(tr -d '[:space:]' < backend/version.txt)"
