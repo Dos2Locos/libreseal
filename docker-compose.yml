@@ -12,7 +12,7 @@
 
 x-backend-env: &backend-env
   OAUTH_REDIRECT_URI: "${PUBLIC_URL}"
-  ALLOWED_HOSTS: "${HOST},backend"
+  ALLOWED_HOSTS: "${HOST},backend,libreseal-backend"
   ALLOWED_ORIGINS: "${PUBLIC_URL}"
   SESSION_COOKIE_DOMAIN: "${HOST}"
   APP_HOST: "self"
@@ -47,11 +47,14 @@ services:
     env_file: .env
     environment:
       NEXTAUTH_URL: "${PUBLIC_URL}"
-      BACKEND_API_BASE: "http://backend:8000"
+      BACKEND_API_BASE: "http://libreseal-backend:8000"
       NEXT_PUBLIC_BACKEND_API_BASE: "${PUBLIC_URL}/service"
       APP_HOST: "self"
     networks:
-      - libreseal-net
+      libreseal-net:
+        # Unique name used by nginx: generic names such as "frontend" can
+        # resolve to other projects' containers on shared networks.
+        aliases: [libreseal-frontend]
 
   migrations:
     container_name: libreseal-migrations
@@ -90,7 +93,10 @@ services:
       retries: 12
       start_period: 20s
     networks:
-      - libreseal-net
+      libreseal-net:
+        # Unique name used by nginx and the frontend: generic names such as
+        # "backend" can resolve to other projects' containers on shared networks.
+        aliases: [libreseal-backend]
 
   worker:
     container_name: libreseal-worker
