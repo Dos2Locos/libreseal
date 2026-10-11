@@ -23,11 +23,11 @@
 
 - [x] 2.1 Escenario "Llamadas del frontend al backend": con el stack de 1.4 y nginx y el frontend conectados a la red de impostores, iniciar sesión con Playwright y listar una app. Verificar que funciona y que los registros de los impostores no muestran ninguna petición.
 - [x] 2.2 Escenario "Configuración antigua sigue funcionando": en el mismo stack, sin red compartida, montar el `nginx/default.conf` de `v0.1.0`. Verificar que `/service/health/` responde y que la UI carga.
-- [ ] 2.3 Abrir la PR de `libreseal`. Verificar que `guard`, `backend`, `frontend` y `compose-build` están en verde.
+- [x] 2.3 Abrir la PR de `libreseal`. Verificar que `guard`, `backend`, `frontend` y `compose-build` están en verde.
 
 ## 3. Skills
 
-- [ ] 3.1 [skills] Rama `docs/unique-nginx-upstreams`:
+- [x] 3.1 [skills] Rama `docs/unique-nginx-upstreams`:
   - actualizar en `docker-compose/refs/docker-compose-deployment.md` el diagrama y el bloque de nginx con los nombres nuevos;
   - cambiar en `docker-compose/SKILL.md` el principio "Preserve nginx routing";
   - añadir a `refs/troubleshooting.md` cómo migrar un `default.conf` personalizado (las dos líneas `set $…_upstream`).
@@ -36,17 +36,17 @@
 
 ## 4. Release y despliegue
 
-- [ ] 4.1 Con confirmación del usuario, fusionar las PRs de 2.3 y 3.1. Después, PR con `scripts/set-version.sh 0.1.1`, fusionarla y empujar el tag `v0.1.1`. Verificar:
+- [x] 4.1 Con confirmación del usuario, fusionar las PRs de 2.3 y 3.1. Después, PR con `scripts/set-version.sh 0.1.1`, fusionarla y empujar el tag `v0.1.1`. Verificar:
   - `LibreSeal Release` termina en verde;
   - el paquete `libreseal-deploy-0.1.1.tar.gz` contiene el `nginx/default.conf` nuevo;
   - `cosign verify` es correcto en las tres imágenes `0.1.1`;
   - tras revisar el borrador, la release queda publicada.
-- [ ] 4.2 Con confirmación del usuario, poner `LIBRESEAL_VERSION=0.1.1` en el compose `libreseal` de Dokploy y redesplegar. Verificar:
+- [x] 4.2 Con confirmación del usuario, poner `LIBRESEAL_VERSION=0.1.1` en el compose `libreseal` de Dokploy y redesplegar. Verificar:
   - `https://libreseal.dos2locos.es/service/health/` devuelve `v0.1.1`;
   - el login carga;
   - nginx usa los nombres nuevos (`docker exec libreseal-nginx grep upstream /etc/nginx/conf.d/default.conf`);
   - el registro con un dominio fuera de la lista sigue devolviendo 403.
-- [ ] 4.3 Escribir `validation.md` con los comandos ejecutados y sus resultados, y con cualquier comprobación no ejecutada y su motivo. Verificar con `openspec validate unique-nginx-upstreams --strict`.
+- [x] 4.3 Escribir `validation.md` con los comandos ejecutados y sus resultados, y con cualquier comprobación no ejecutada y su motivo. Verificar con `openspec validate unique-nginx-upstreams --strict`.
 
 ## Workflow follow-up
 
