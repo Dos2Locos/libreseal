@@ -3,6 +3,8 @@ import logging
 import os
 import re
 import secrets
+from base64 import b64decode
+from binascii import Error as Base64Error
 from datetime import timedelta
 
 from django.conf import settings
@@ -185,28 +187,30 @@ def password_register(request):
     # for invite-driven signups and locks the email field; this enforces the
     # same constraint server-side so a tampered request can't register an
     # arbitrary email and then fail downstream at invite acceptance.
-    callback_url = data.get("callbackUrl") or ""
-    if callback_url.startswith("/invite/"):
-        from base64 import b64decode
-
+    invite_required = os.getenv("REQUIRE_PASSWORD_SIGNUP_INVITE", "").lower() in (
+        "true", "1", "yes"
+    )
+    callback_url = data.get("callbackUrl")
+    invite = None
+    if isinstance(callback_url, str) and callback_url.startswith("/invite/"):
+        encoded_invite = callback_url[len("/invite/") :].split("/")[0].split("?")[0]
         try:
-            encoded_invite = callback_url[len("/invite/") :].split("/")[0].split("?")[0]
-            invite_id = b64decode(encoded_invite).decode("utf-8")
+            invite_id = b64decode(encoded_invite, validate=True).decode("utf-8")
             invite = OrganisationMemberInvite.objects.get(
-                id=invite_id,
-                valid=True,
-                expires_at__gt=timezone.now(),
+                id=invite_id, valid=True, expires_at__gt=timezone.now()
             )
-            if invite.invitee_email.lower().strip() != email:
-                return JsonResponse(
-                    {"error": "This invite is for a different email address."},
-                    status=403,
-                )
-        except (OrganisationMemberInvite.DoesNotExist, ValueError, Exception):
-            # Invalid invite reference — ignore and let registration proceed
-            # under the user's submitted email. Acceptance will fail later
-            # with a clearer error if the invite truly is bad.
+        except (Base64Error, ValueError, OrganisationMemberInvite.DoesNotExist):
             pass
+
+    if invite_required and invite is None:
+        return JsonResponse(
+            {"error": "A valid organisation invitation is required to register."},
+            status=403,
+        )
+    if invite is not None and invite.invitee_email.lower().strip() != email:
+        return JsonResponse(
+            {"error": "This invite is for a different email address."}, status=403
+        )
 
     # Skip verification if explicitly configured OR if SMTP isn't set up
     # (no point creating inactive accounts when emails can't be delivered)
