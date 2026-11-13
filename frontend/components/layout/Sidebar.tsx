@@ -21,7 +21,6 @@ import { SidebarContext } from '@/contexts/sidebarContext'
 import { Fragment, useContext, useEffect, useState } from 'react'
 import { OrganisationType } from '@/apollo/graphql'
 import { Menu, Transition } from '@headlessui/react'
-import { Button } from '../common/Button'
 import { FaListUl } from 'react-icons/fa6'
 
 export type SidebarLinkT = {
@@ -80,12 +79,10 @@ const MobileMoreMenu = ({
   overflowLinks,
   organisations,
   activeOrganisation,
-  isOwner,
 }: {
   overflowLinks: SidebarLinkT[]
   organisations: OrganisationType[] | null
   activeOrganisation: OrganisationType | null
-  isOwner: boolean
 }) => {
   return (
     <Menu as="div" className="relative flex-1 min-w-0">
@@ -134,22 +131,20 @@ const MobileMoreMenu = ({
                     )}
                   </Menu.Item>
                 ))}
-                {!isOwner && (
-                  <Menu.Item>
-                    {({ active }) => (
-                      <Link
-                        href="/onboard"
-                        className={clsx(
-                          'flex items-center gap-3 rounded px-2 py-2 text-sm',
-                          active && 'bg-neutral-100 dark:bg-neutral-700'
-                        )}
-                      >
-                        <FaPlus />
-                        Create New Organisation
-                      </Link>
-                    )}
-                  </Menu.Item>
-                )}
+                <Menu.Item>
+                  {({ active }) => (
+                    <Link
+                      href="/onboard"
+                      className={clsx(
+                        'flex items-center gap-3 rounded px-2 py-2 text-sm',
+                        active && 'bg-neutral-100 dark:bg-neutral-700'
+                      )}
+                    >
+                      <FaPlus />
+                      Create New Organisation
+                    </Link>
+                  )}
+                </Menu.Item>
               </div>
               <div className="py-1">
                 {overflowLinks.map((link) => (
@@ -184,8 +179,6 @@ const Sidebar = () => {
   const collapsed = isAutoCollapsed || sidebarState === 'collapsed'
   const team = usePathname()?.split('/')[1]
   const { organisations, activeOrganisation } = useContext(organisationContext)
-  const showOrgsMenu = organisations && organisations.length > 1
-  const isOwner = organisations?.some((org) => org.role!.name!.toLowerCase() === 'owner')
 
   useEffect(() => {
     const handleResize = () => {
@@ -228,7 +221,7 @@ const Sidebar = () => {
             </span>
           </div>
         )}
-        {showOrgsMenu && !collapsed && (
+        {!collapsed && (
           <FaChevronDown
             className={clsx(
               'shrink-0 text-neutral-500 opacity-0 group-hover:opacity-100 transition transform ease',
@@ -243,8 +236,6 @@ const Sidebar = () => {
         )}
       </div>
     )
-
-    if (!showOrgsMenu) return <OrgLabel />
 
     return (
       <Menu
@@ -298,15 +289,21 @@ const Sidebar = () => {
                     </Menu.Item>
                   ))}
                 </div>
-                {!isOwner && (
-                  <div className="py-3 px-1 flex justify-center">
-                    <Link href="/onboard">
-                      <Button variant="secondary">
+                <div className="px-1 py-1">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/onboard"
+                        className={clsx(
+                          'flex items-center gap-3 rounded px-2 py-2 text-sm',
+                          active && 'bg-neutral-100 dark:bg-neutral-700'
+                        )}
+                      >
                         <FaPlus /> Create New Organisation
-                      </Button>
-                    </Link>
-                  </div>
-                )}
+                      </Link>
+                    )}
+                  </Menu.Item>
+                </div>
               </Menu.Items>
             </Transition>
           </>
@@ -426,7 +423,6 @@ const Sidebar = () => {
           overflowLinks={overflowLinks}
           organisations={organisations}
           activeOrganisation={activeOrganisation}
-          isOwner={!!isOwner}
         />
       </nav>
     </>
