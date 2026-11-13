@@ -144,6 +144,42 @@ class PasswordRegisterTest(_ThrottleClearMixin, unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    @patch.dict("os.environ", {"REQUIRE_PASSWORD_SIGNUP_INVITE": "true"})
+    @patch("api.views.auth_password.get_user_model")
+    def test_invite_only_rejects_missing_malformed_and_expired_invites(self, get_user):
+        from api.models import OrganisationMemberInvite
+
+        user = get_user.return_value
+        user.objects.filter.return_value.exists.return_value = False
+        with patch.object(
+            OrganisationMemberInvite.objects, "get",
+            side_effect=OrganisationMemberInvite.DoesNotExist,
+        ):
+            for callback in (None, 123, "/invite/%%%%", "/invite/ZXhwaXJlZA=="):
+                with self.subTest(callback=callback):
+                    payload = dict(self.VALID_PAYLOAD, callbackUrl=callback)
+                    response = password_register(_make_post("/auth/password/register/", payload))
+                    self.assertEqual(response.status_code, 403)
+            user.objects.create_user.assert_not_called()
+
+    @patch.dict("os.environ", {"REQUIRE_PASSWORD_SIGNUP_INVITE": "true"})
+    @patch("api.views.auth_password._skip_email_verification", return_value=True)
+    @patch("api.views.auth_password.transaction")
+    @patch("api.views.auth_password.get_user_model")
+    def test_invite_only_accepts_valid_invite_for_same_email(self, get_user, tx, skip):
+        from api.models import OrganisationMemberInvite
+
+        user = get_user.return_value
+        user.objects.filter.return_value.exists.return_value = False
+        invite = MagicMock(invitee_email="Alice@Gmail.com")
+        with patch.object(OrganisationMemberInvite.objects, "get", return_value=invite) as lookup:
+            payload = dict(self.VALID_PAYLOAD, email="alice@gmail.com", callbackUrl="/invite/aW52aXRl")
+            response = password_register(_make_post("/auth/password/register/", payload))
+        self.assertEqual(response.status_code, 201)
+        user.objects.create_user.assert_called_once()
+        self.assertTrue(lookup.call_args.kwargs["valid"])
+        self.assertIn("expires_at__gt", lookup.call_args.kwargs)
+
     @patch("api.views.auth_password.OrganisationMemberInvite")
     @patch("api.views.auth_password.get_user_model")
     def test_register_rejects_invite_email_mismatch(

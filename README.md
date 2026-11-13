@@ -92,6 +92,9 @@ To keep building from source instead, add `-f docker-compose.yml -f docker-compo
 
 All settings live in `.env` (template: [`.env.example`](.env.example)). Key variables: `HOST`, `PUBLIC_URL`, `HTTP_PORT`, `HTTPS_PORT`, `ENABLE_PASSWORD_AUTH`, `NGINX_REAL_IP_FROM` (see [Network access policies](#network-access-policies)), `SSO_PROVIDERS` (`google`, `github`, `gitlab`, `authentik`, `authelia`) and their credentials, optional `SMTP_*`. Never commit `.env`.
 
+Set `REQUIRE_PASSWORD_SIGNUP_INVITE=true` to require a valid, unexpired organisation invitation addressed to the registration email. Enable it after creating your first account and organisation. It applies to new password accounts and leaves password login, password recovery and SSO flows unchanged.
+
+
 ## CLI
 
 The CLI lives in [Dos2Locos/libreseal-cli](https://github.com/Dos2Locos/libreseal-cli) (GPL-3.0):
